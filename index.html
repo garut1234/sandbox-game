@@ -1,26 +1,47 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Inventory System</title>
+    <title>Sandbox Pro - Fixed Inventory</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Courier New', Courier, monospace; }
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: sans-serif; }
         canvas { display: block; }
-        .ui { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); color: white; padding: 15px; border-radius: 8px; pointer-events: none; }
-        .inventory { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; border: 2px solid white; }
-        .slot { width: 50px; height: 50px; margin: 0 5px; border: 2px solid #555; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; border-radius: 5px; }
-        .active { border-color: #00ff00; background: rgba(0,255,0,0.2); }
+        
+        /* UI Keterangan di pojok kiri atas */
+        .ui-info { 
+            position: absolute; top: 10px; left: 10px; 
+            background: rgba(0,0,0,0.7); color: white; 
+            padding: 10px; border-radius: 5px; pointer-events: none; 
+            font-size: 12px; z-index: 100;
+        }
+
+        /* CONTAINER INVENTORY - Ini yang harusnya muncul di bawah */
+        .inventory-bar { 
+            position: absolute; bottom: 30px; left: 50%; 
+            transform: translateX(-50%); 
+            display: flex; background: #333; 
+            padding: 10px; border: 3px solid #000; 
+            border-radius: 10px; z-index: 1000;
+        }
+
+        .slot { 
+            width: 50px; height: 50px; margin: 0 5px; 
+            border: 3px solid #555; display: flex; 
+            justify-content: center; align-items: center; 
+            color: white; font-weight: bold; cursor: pointer;
+        }
+
+        /* Warna slot aktif saat dipilih */
+        .active { border-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
     </style>
 </head>
 <body>
 
-<div class="ui">
-    <b>KONTROL:</b><br>
-    A / D : Jalan | W : Lompat<br>
-    Angka 1, 2, 3 : Pilih Blok<br>
-    Klik Kiri : Pasang | Klik Kanan : Hancur
+<div class="ui-info">
+    <b>A/D:</b> Jalan | <b>W:</b> Lompat<br>
+    <b>1, 2, 3:</b> Ganti Blok
 </div>
 
-<div class="inventory">
+<div class="inventory-bar">
     <div id="slot1" class="slot active" style="background-color: #8B4513;">1</div>
     <div id="slot2" class="slot" style="background-color: #808080;">2</div>
     <div id="slot3" class="slot" style="background-color: #228B22;">3</div>
@@ -36,16 +57,10 @@
 
     const tileSize = 40;
     let world = {};
-    
-    // Sistem Inventory
-    let selectedBlock = "#8B4513"; // Default Tanah
-    const blocks = {
-        "1": "#8B4513", // Tanah
-        "2": "#808080", // Batu
-        "3": "#228B22"  // Daun
-    };
+    let selectedBlock = "#8B4513"; 
+    const blocks = { "1": "#8B4513", "2": "#808080", "3": "#228B22" };
 
-    // Lantai Dasar
+    // Buat Lantai
     for(let i = 0; i < Math.ceil(canvas.width/tileSize); i++) {
         world[`${i},${Math.floor(canvas.height/tileSize) - 1}`] = "#5d4037";
     }
@@ -65,7 +80,6 @@
         return world[`${p.col},${p.row}`] !== undefined;
     }
 
-    // Input Mouse & Keyboard
     canvas.addEventListener("mousedown", (e) => {
         const pos = getGridPos(e.clientX, e.clientY);
         const key = `${pos.col},${pos.row}`;
@@ -75,7 +89,6 @@
 
     window.addEventListener("keydown", (e) => {
         keys[e.code] = true;
-        // Pilih Inventory pakai angka
         if (blocks[e.key]) {
             selectedBlock = blocks[e.key];
             document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
@@ -106,9 +119,6 @@
             player.y = p.row * tileSize - player.h;
             player.vy = 0;
             player.grounded = true;
-        } else if (isBlocked(player.x + 5, player.y) || isBlocked(player.x + player.w - 5, player.y)) {
-            player.vy = 0;
-            player.y += 2;
         }
 
         if (keys["KeyW"] && player.grounded) {
@@ -119,14 +129,6 @@
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Grid
-        ctx.strokeStyle = "rgba(255,255,255,0.1)";
-        for(let x=0; x<canvas.width; x+=tileSize) {
-            ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
-        }
-
-        // Blok
         for (let key in world) {
             const [col, row] = key.split(",").map(Number);
             ctx.fillStyle = world[key];
@@ -134,13 +136,8 @@
             ctx.strokeStyle = "rgba(0,0,0,0.2)";
             ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
         }
-
-        // Pemain
         ctx.fillStyle = "#FFD700";
         ctx.fillRect(player.x, player.y, player.w, player.h);
-        ctx.fillStyle = "black";
-        ctx.fillRect(player.x + (player.vx >= 0 ? 20 : 5), player.y + 10, 5, 5);
-
         update();
         requestAnimationFrame(draw);
     }
