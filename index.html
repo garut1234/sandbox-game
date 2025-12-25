@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - HP & Fall Damage</title>
+    <title>Sandbox Pro - Lava & Damage System</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: sans-serif; }
         canvas { display: block; }
@@ -10,11 +10,11 @@
         .hp-container {
             position: absolute; top: 10px; right: 20px;
             width: 200px; height: 25px; background: #333;
-            border: 3px solid #000; border-radius: 15px; overflow: hidden;
+            border: 3px solid #000; border-radius: 15px; overflow: hidden; z-index: 100;
         }
         .hp-bar {
             width: 100%; height: 100%; background: #ff4444;
-            transition: width 0.3s ease;
+            transition: width 0.2s ease;
         }
 
         .ui-info { 
@@ -24,6 +24,7 @@
             font-size: 14px; z-index: 100;
         }
 
+        /* INVENTORY BAR - Sekarang ada 4 Slot */
         .inventory-bar { 
             position: absolute; bottom: 30px; left: 50%; 
             transform: translateX(-50%); 
@@ -45,8 +46,9 @@
 <body>
 
 <div class="ui-info">
-    <b>HP Karakter:</b> Jangan jatuh terlalu tinggi!<br>
-    <b>1, 2, 3:</b> Pilih Blok | <b>W:</b> Lompat
+    <b>INFO:</b> Blok Oranye adalah <b>LAVA!</b><br>
+    Hati-hati jangan diinjak.<br>
+    <b>1, 2, 3, 4:</b> Pilih Blok | <b>W:</b> Lompat
 </div>
 
 <div class="hp-container">
@@ -57,6 +59,7 @@
     <div id="slot1" class="slot active" style="background-color: #8B4513;">1</div>
     <div id="slot2" class="slot" style="background-color: #808080;">2</div>
     <div id="slot3" class="slot" style="background-color: #228B22;">3</div>
+    <div id="slot4" class="slot" style="background-color: #FF4500;">4</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -70,7 +73,7 @@
     const tileSize = 40;
     let world = {};
     
-    // MUAT DUNIA
+    // LOAD WORLD
     const savedWorld = localStorage.getItem("mySandboxWorld");
     if (savedWorld) {
         world = JSON.parse(savedWorld);
@@ -80,23 +83,32 @@
         }
     }
 
-    // AWAN
     let clouds = [];
     for(let i=0; i<5; i++) clouds.push({x: Math.random()*canvas.width, y: Math.random()*(canvas.height/2), s: 0.2+Math.random()*0.5, w: 100+Math.random()*100});
 
+    // INVENTORY DATA
     let selectedBlock = "#8B4513"; 
-    const blocks = { "1": "#8B4513", "2": "#808080", "3": "#228B22" };
+    const blocks = { 
+        "1": "#8B4513", // Tanah
+        "2": "#808080", // Batu
+        "3": "#228B22", // Daun
+        "4": "#FF4500"  // LAVA (Oranye Merah)
+    };
 
     let player = {
         x: 100, y: 100, w: 30, h: 38,
         vx: 0, vy: 0, speed: 5,
         jumpPower: -12, gravity: 0.6, grounded: false,
-        hp: 100,
-        maxHp: 100
+        hp: 100, dmgCooldown: 0
     };
 
     function getGridPos(x, y) { return { col: Math.floor(x / tileSize), row: Math.floor(y / tileSize) }; }
-    function isBlocked(px, py) { let p = getGridPos(px, py); return world[`${p.col},${p.row}`] !== undefined; }
+    
+    // Cek apakah ada blok di koordinat pixel tertentu
+    function getBlockAt(px, py) {
+        let p = getGridPos(px, py);
+        return world[`${p.col},${p.row}`];
+    }
 
     canvas.addEventListener("mousedown", (e) => {
         const pos = getGridPos(e.clientX, e.clientY);
@@ -124,34 +136,39 @@
         if (keys["KeyA"]) player.vx = -player.speed;
         if (keys["KeyD"]) player.vx = player.speed;
         
-        // Simpan kecepatan jatuh sebelum menabrak tanah
         let lastVy = player.vy;
         player.vy += player.gravity;
 
+        // Gerak X & Tabrakan
         player.x += player.vx;
-        if (isBlocked(player.x, player.y + 5) || isBlocked(player.x + player.w, player.y + 5) || 
-            isBlocked(player.x, player.y + player.h - 5) || isBlocked(player.x + player.w, player.y + player.h - 5)) {
+        if (getBlockAt(player.x, player.y+5) || getBlockAt(player.x+player.w, player.y+5) || 
+            getBlockAt(player.x, player.y+player.h-5) || getBlockAt(player.x+player.w, player.y+player.h-5)) {
             player.x -= player.vx;
         }
 
+        // Gerak Y & Tabrakan
         player.grounded = false;
         player.y += player.vy;
         
-        // Deteksi Jatuh (Fall Damage)
-        if (isBlocked(player.x + 5, player.y + player.h) || isBlocked(player.x + player.w - 5, player.y + player.h)) {
-            // Jika kecepatan jatuh sangat tinggi saat menabrak tanah
+        let footerLeft = getBlockAt(player.x + 5, player.y + player.h);
+        let footerRight = getBlockAt(player.x + player.w - 5, player.y + player.h);
+
+        if (footerLeft || footerRight) {
+            // FALL DAMAGE
             if (lastVy > 15) { 
                 player.hp -= Math.floor(lastVy * 2);
-                updateHpBar();
             }
             
+            // LAVA DAMAGE (Jika blok yang diinjak berwarna Oranye)
+            if ((footerLeft === "#FF4500" || footerRight === "#FF4500") && player.dmgCooldown <= 0) {
+                player.hp -= 10;
+                player.dmgCooldown = 30; // Jeda damage agar tidak langsung mati
+            }
+
             let p = getGridPos(player.x, player.y + player.h);
             player.y = p.row * tileSize - player.h;
             player.vy = 0;
             player.grounded = true;
-        } else if (isBlocked(player.x + 5, player.y) || isBlocked(player.x + player.w - 5, player.y)) {
-            player.vy = 0;
-            player.y += 2;
         }
 
         if (keys["KeyW"] && player.grounded) {
@@ -159,20 +176,19 @@
             player.grounded = false;
         }
 
-        // Cek jika HP Habis (Mati)
+        // Cooldown damage
+        if (player.dmgCooldown > 0) player.dmgCooldown--;
+
+        // Update HP Bar
+        document.getElementById("hpBar").style.width = Math.max(0, player.hp) + "%";
+
+        // Mati & Respawn
         if (player.hp <= 0) {
-            alert("Kamu Mati! Mengulang dari awal...");
             player.hp = 100;
             player.x = 100; player.y = 100;
-            updateHpBar();
         }
 
         clouds.forEach(c => { c.x -= c.s; if(c.x + c.w < 0) c.x = canvas.width; });
-    }
-
-    function updateHpBar() {
-        const bar = document.getElementById("hpBar");
-        bar.style.width = player.hp + "%";
     }
 
     function draw() {
@@ -183,16 +199,24 @@
         ctx.fillStyle = "white";
         clouds.forEach(c => { ctx.beginPath(); ctx.ellipse(c.x, c.y, c.w/2, 20, 0, 0, Math.PI*2); ctx.fill(); });
 
-        // Blok
+        // BLOK DUNIA
         for (let key in world) {
             const [col, row] = key.split(",").map(Number);
             ctx.fillStyle = world[key];
             ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
-            ctx.strokeStyle = "rgba(0,0,0,0.3)"; ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
+            
+            // Efek lava berdenyut (opsional)
+            if (world[key] === "#FF4500") {
+                ctx.fillStyle = "rgba(255,255,255,0.2)";
+                ctx.fillRect(col * tileSize, row * tileSize, tileSize, 5);
+            }
+            
+            ctx.strokeStyle = "rgba(0,0,0,0.3)"; 
+            ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
         }
 
-        // Karakter
-        ctx.fillStyle = (player.hp < 30) ? "red" : "#FFD700"; // Warna jadi merah kalau darah tipis
+        // KARAKTER
+        ctx.fillStyle = (player.dmgCooldown > 0) ? "white" : "#FFD700"; // Berkedip putih kalau kena lava
         ctx.fillRect(player.x, player.y, player.w, player.h);
         ctx.fillStyle = "black";
         let eyeX = player.vx >= 0 ? player.x + 20 : player.x + 5;
