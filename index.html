@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Builder - Dasar Breaworlds</title>
+    <title>Sandbox Pro - Gravitasi & Lompat</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: Arial; }
-        canvas { display: block; background: #87CEEB; }
-        .info { position: absolute; top: 10; left: 10; background: rgba(0,0,0,0.5); color: white; padding: 10px; border-radius: 5px; pointer-events: none; }
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Courier New', Courier, monospace; }
+        canvas { display: block; }
+        .ui { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); color: white; padding: 15px; border-radius: 8px; pointer-events: none; line-height: 1.5; }
     </style>
 </head>
 <body>
 
-<div class="info">
-    W/A/S/D: Gerak | Klik Kiri: Pasang Blok | Klik Kanan: Hancurkan Blok
+<div class="ui">
+    <b>KONTROL:</b><br>
+    A / D : Jalan | W : Lompat<br>
+    Klik Kiri : Pasang | Klik Kanan : Hancurkan
 </div>
 <canvas id="gameCanvas"></canvas>
 
@@ -21,36 +23,41 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const tileSize = 40; // Ukuran satu kotak blok
-    let world = {}; // Menyimpan data blok yang dipasang
+    const tileSize = 40;
+    let world = {};
+
+    // Inisialisasi lantai dasar agar tidak jatuh ke tak terhingga
+    for(let i = 0; i < Math.ceil(canvas.width/tileSize); i++) {
+        world[`${i},${Math.floor(canvas.height/tileSize) - 1}`] = "#5d4037";
+    }
 
     let player = {
         x: 100, y: 100,
-        w: 30, h: 35,
-        speed: 5
+        w: 30, h: 38,
+        vx: 0, vy: 0,
+        speed: 4,
+        jumpPower: -12,
+        gravity: 0.6,
+        grounded: false
     };
 
-    // Fungsi koordinat grid (mengubah posisi pixel jadi koordinat kotak 0,1,2...)
     function getGridPos(x, y) {
-        return {
-            col: Math.floor(x / tileSize),
-            row: Math.floor(y / tileSize)
-        };
+        return { col: Math.floor(x / tileSize), row: Math.floor(y / tileSize) };
     }
 
-    // Event Klik Mouse
+    // Fungsi cek tabrakan dengan blok di dunia
+    function isBlocked(px, py) {
+        let p = getGridPos(px, py);
+        return world[`${p.col},${p.row}`] !== undefined;
+    }
+
     canvas.addEventListener("mousedown", (e) => {
         const pos = getGridPos(e.clientX, e.clientY);
         const key = `${pos.col},${pos.row}`;
-
-        if (e.button === 0) { // Klik Kiri: Pasang
-            world[key] = "#8B4513"; // Warna tanah
-        } else if (e.button === 2) { // Klik Kanan: Hancur
-            delete world[key];
-        }
+        if (e.button === 0) world[key] = "#8B4513"; 
+        else if (e.button === 2) delete world[key];
     });
 
-    // Mencegah menu klik kanan muncul
     canvas.oncontextmenu = (e) => e.preventDefault();
 
     let keys = {};
@@ -58,35 +65,70 @@
     window.onkeyup = (e) => keys[e.code] = false;
 
     function update() {
-        if (keys["KeyA"]) player.x -= player.speed;
-        if (keys["KeyD"]) player.x += player.speed;
-        if (keys["KeyW"]) player.y -= player.speed;
-        if (keys["KeyS"]) player.y += player.speed;
+        // 1. Input Gerak Horizontal
+        player.vx = 0;
+        if (keys["KeyA"]) player.vx = -player.speed;
+        if (keys["KeyD"]) player.vx = player.speed;
+
+        // 2. Gravitasi
+        player.vy += player.gravity;
+
+        // 3. Update Posisi X & Cek Tabrakan Dinding
+        player.x += player.vx;
+        if (isBlocked(player.x, player.y + 5) || isBlocked(player.x + player.w, player.y + 5) || 
+            isBlocked(player.x, player.y + player.h - 5) || isBlocked(player.x + player.w, player.y + player.h - 5)) {
+            player.x -= player.vx; // Mentok
+        }
+
+        // 4. Update Posisi Y & Cek Tabrakan Lantai/Atap
+        player.grounded = false;
+        player.y += player.vy;
+
+        // Cek kaki (Lantai)
+        if (isBlocked(player.x + 5, player.y + player.h) || isBlocked(player.x + player.w - 5, player.y + player.h)) {
+            let p = getGridPos(player.x, player.y + player.h);
+            player.y = p.row * tileSize - player.h;
+            player.vy = 0;
+            player.grounded = true;
+        } 
+        // Cek kepala (Atap)
+        else if (isBlocked(player.x + 5, player.y) || isBlocked(player.x + player.w - 5, player.y)) {
+            player.vy = 0;
+            player.y += 2;
+        }
+
+        // 5. Lompat
+        if (keys["KeyW"] && player.grounded) {
+            player.vy = player.jumpPower;
+            player.grounded = false;
+        }
     }
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 1. Gambar Grid (Garis bantu)
-        ctx.strokeStyle = "rgba(255,255,255,0.2)";
+        // Gambar Grid
+        ctx.strokeStyle = "rgba(255,255,255,0.1)";
         for(let x=0; x<canvas.width; x+=tileSize) {
             ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
         }
-        for(let y=0; y<canvas.height; y+=tileSize) {
-            ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
-        }
 
-        // 2. Gambar Blok yang sudah dipasang
+        // Gambar Blok
         for (let key in world) {
             const [col, row] = key.split(",").map(Number);
             ctx.fillStyle = world[key];
             ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
-            ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
+            // Detail tekstur tanah sederhana
+            ctx.fillStyle = "rgba(0,0,0,0.1)";
+            ctx.fillRect(col * tileSize, row * tileSize + tileSize-5, tileSize, 5);
         }
 
-        // 3. Gambar Karakter (Pemain)
-        ctx.fillStyle = "#FFD700";
+        // Gambar Pemain
+        ctx.fillStyle = "#FFD700"; // Warna emas
         ctx.fillRect(player.x, player.y, player.w, player.h);
+        // Mata
+        ctx.fillStyle = "black";
+        ctx.fillRect(player.x + (player.vx >= 0 ? 20 : 5), player.y + 10, 5, 5);
 
         update();
         requestAnimationFrame(draw);
