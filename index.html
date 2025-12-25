@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Gravitasi & Lompat</title>
+    <title>Sandbox Pro - Inventory System</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Courier New', Courier, monospace; }
         canvas { display: block; }
-        .ui { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); color: white; padding: 15px; border-radius: 8px; pointer-events: none; line-height: 1.5; }
+        .ui { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); color: white; padding: 15px; border-radius: 8px; pointer-events: none; }
+        .inventory { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; border: 2px solid white; }
+        .slot { width: 50px; height: 50px; margin: 0 5px; border: 2px solid #555; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; border-radius: 5px; }
+        .active { border-color: #00ff00; background: rgba(0,255,0,0.2); }
     </style>
 </head>
 <body>
@@ -13,8 +16,16 @@
 <div class="ui">
     <b>KONTROL:</b><br>
     A / D : Jalan | W : Lompat<br>
-    Klik Kiri : Pasang | Klik Kanan : Hancurkan
+    Angka 1, 2, 3 : Pilih Blok<br>
+    Klik Kiri : Pasang | Klik Kanan : Hancur
 </div>
+
+<div class="inventory">
+    <div id="slot1" class="slot active" style="background-color: #8B4513;">1</div>
+    <div id="slot2" class="slot" style="background-color: #808080;">2</div>
+    <div id="slot3" class="slot" style="background-color: #228B22;">3</div>
+</div>
+
 <canvas id="gameCanvas"></canvas>
 
 <script>
@@ -25,79 +36,81 @@
 
     const tileSize = 40;
     let world = {};
+    
+    // Sistem Inventory
+    let selectedBlock = "#8B4513"; // Default Tanah
+    const blocks = {
+        "1": "#8B4513", // Tanah
+        "2": "#808080", // Batu
+        "3": "#228B22"  // Daun
+    };
 
-    // Inisialisasi lantai dasar agar tidak jatuh ke tak terhingga
+    // Lantai Dasar
     for(let i = 0; i < Math.ceil(canvas.width/tileSize); i++) {
         world[`${i},${Math.floor(canvas.height/tileSize) - 1}`] = "#5d4037";
     }
 
     let player = {
-        x: 100, y: 100,
-        w: 30, h: 38,
-        vx: 0, vy: 0,
-        speed: 4,
-        jumpPower: -12,
-        gravity: 0.6,
-        grounded: false
+        x: 100, y: 100, w: 30, h: 38,
+        vx: 0, vy: 0, speed: 4,
+        jumpPower: -12, gravity: 0.6, grounded: false
     };
 
     function getGridPos(x, y) {
         return { col: Math.floor(x / tileSize), row: Math.floor(y / tileSize) };
     }
 
-    // Fungsi cek tabrakan dengan blok di dunia
     function isBlocked(px, py) {
         let p = getGridPos(px, py);
         return world[`${p.col},${p.row}`] !== undefined;
     }
 
+    // Input Mouse & Keyboard
     canvas.addEventListener("mousedown", (e) => {
         const pos = getGridPos(e.clientX, e.clientY);
         const key = `${pos.col},${pos.row}`;
-        if (e.button === 0) world[key] = "#8B4513"; 
+        if (e.button === 0) world[key] = selectedBlock; 
         else if (e.button === 2) delete world[key];
     });
 
-    canvas.oncontextmenu = (e) => e.preventDefault();
+    window.addEventListener("keydown", (e) => {
+        keys[e.code] = true;
+        // Pilih Inventory pakai angka
+        if (blocks[e.key]) {
+            selectedBlock = blocks[e.key];
+            document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
+            document.getElementById('slot' + e.key).classList.add('active');
+        }
+    });
 
+    canvas.oncontextmenu = (e) => e.preventDefault();
     let keys = {};
-    window.onkeydown = (e) => keys[e.code] = true;
     window.onkeyup = (e) => keys[e.code] = false;
 
     function update() {
-        // 1. Input Gerak Horizontal
         player.vx = 0;
         if (keys["KeyA"]) player.vx = -player.speed;
         if (keys["KeyD"]) player.vx = player.speed;
-
-        // 2. Gravitasi
         player.vy += player.gravity;
 
-        // 3. Update Posisi X & Cek Tabrakan Dinding
         player.x += player.vx;
         if (isBlocked(player.x, player.y + 5) || isBlocked(player.x + player.w, player.y + 5) || 
             isBlocked(player.x, player.y + player.h - 5) || isBlocked(player.x + player.w, player.y + player.h - 5)) {
-            player.x -= player.vx; // Mentok
+            player.x -= player.vx;
         }
 
-        // 4. Update Posisi Y & Cek Tabrakan Lantai/Atap
         player.grounded = false;
         player.y += player.vy;
-
-        // Cek kaki (Lantai)
         if (isBlocked(player.x + 5, player.y + player.h) || isBlocked(player.x + player.w - 5, player.y + player.h)) {
             let p = getGridPos(player.x, player.y + player.h);
             player.y = p.row * tileSize - player.h;
             player.vy = 0;
             player.grounded = true;
-        } 
-        // Cek kepala (Atap)
-        else if (isBlocked(player.x + 5, player.y) || isBlocked(player.x + player.w - 5, player.y)) {
+        } else if (isBlocked(player.x + 5, player.y) || isBlocked(player.x + player.w - 5, player.y)) {
             player.vy = 0;
             player.y += 2;
         }
 
-        // 5. Lompat
         if (keys["KeyW"] && player.grounded) {
             player.vy = player.jumpPower;
             player.grounded = false;
@@ -106,34 +119,31 @@
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Gambar Grid
+        
+        // Grid
         ctx.strokeStyle = "rgba(255,255,255,0.1)";
         for(let x=0; x<canvas.width; x+=tileSize) {
             ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
         }
 
-        // Gambar Blok
+        // Blok
         for (let key in world) {
             const [col, row] = key.split(",").map(Number);
             ctx.fillStyle = world[key];
             ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
-            // Detail tekstur tanah sederhana
-            ctx.fillStyle = "rgba(0,0,0,0.1)";
-            ctx.fillRect(col * tileSize, row * tileSize + tileSize-5, tileSize, 5);
+            ctx.strokeStyle = "rgba(0,0,0,0.2)";
+            ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
         }
 
-        // Gambar Pemain
-        ctx.fillStyle = "#FFD700"; // Warna emas
+        // Pemain
+        ctx.fillStyle = "#FFD700";
         ctx.fillRect(player.x, player.y, player.w, player.h);
-        // Mata
         ctx.fillStyle = "black";
         ctx.fillRect(player.x + (player.vx >= 0 ? 20 : 5), player.y + 10, 5, 5);
 
         update();
         requestAnimationFrame(draw);
     }
-
     draw();
 </script>
 </body>
