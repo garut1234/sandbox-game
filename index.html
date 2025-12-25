@@ -1,44 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Fixed Inventory</title>
+    <title>Breaworlds Clone - Sandbox Pro</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: sans-serif; }
         canvas { display: block; }
         
-        /* UI Keterangan di pojok kiri atas */
+        /* UI Keterangan */
         .ui-info { 
             position: absolute; top: 10px; left: 10px; 
             background: rgba(0,0,0,0.7); color: white; 
             padding: 10px; border-radius: 5px; pointer-events: none; 
-            font-size: 12px; z-index: 100;
+            font-size: 14px; z-index: 100;
         }
 
-        /* CONTAINER INVENTORY - Ini yang harusnya muncul di bawah */
+        /* INVENTORY BAR */
         .inventory-bar { 
             position: absolute; bottom: 30px; left: 50%; 
             transform: translateX(-50%); 
             display: flex; background: #333; 
             padding: 10px; border: 3px solid #000; 
-            border-radius: 10px; z-index: 1000;
+            border-radius: 12px; z-index: 1000;
         }
 
         .slot { 
-            width: 50px; height: 50px; margin: 0 5px; 
+            width: 50px; height: 50px; margin: 0 8px; 
             border: 3px solid #555; display: flex; 
             justify-content: center; align-items: center; 
             color: white; font-weight: bold; cursor: pointer;
+            border-radius: 8px; transition: 0.2s;
         }
 
-        /* Warna slot aktif saat dipilih */
-        .active { border-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
+        /* Efek jika slot dipilih */
+        .active { 
+            border-color: #00ff00; 
+            box-shadow: 0 0 15px #00ff00; 
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
 
 <div class="ui-info">
-    <b>A/D:</b> Jalan | <b>W:</b> Lompat<br>
-    <b>1, 2, 3:</b> Ganti Blok
+    <b>A / D:</b> Jalan | <b>W:</b> Lompat<br>
+    <b>1, 2, 3:</b> Pilih Jenis Blok<br>
+    <b>Klik Kiri:</b> Pasang | <b>Klik Kanan:</b> Hancur
 </div>
 
 <div class="inventory-bar">
@@ -57,17 +63,24 @@
 
     const tileSize = 40;
     let world = {};
+    
+    // SISTEM SAVING: Muat data dari memori browser
+    const savedWorld = localStorage.getItem("mySandboxWorld");
+    if (savedWorld) {
+        world = JSON.parse(savedWorld);
+    } else {
+        // Jika belum ada data, buat lantai dasar otomatis
+        for(let i = 0; i < Math.ceil(canvas.width/tileSize); i++) {
+            world[`${i},${Math.floor(canvas.height/tileSize) - 1}`] = "#5d4037";
+        }
+    }
+
     let selectedBlock = "#8B4513"; 
     const blocks = { "1": "#8B4513", "2": "#808080", "3": "#228B22" };
 
-    // Buat Lantai
-    for(let i = 0; i < Math.ceil(canvas.width/tileSize); i++) {
-        world[`${i},${Math.floor(canvas.height/tileSize) - 1}`] = "#5d4037";
-    }
-
     let player = {
         x: 100, y: 100, w: 30, h: 38,
-        vx: 0, vy: 0, speed: 4,
+        vx: 0, vy: 0, speed: 5,
         jumpPower: -12, gravity: 0.6, grounded: false
     };
 
@@ -80,13 +93,19 @@
         return world[`${p.col},${p.row}`] !== undefined;
     }
 
+    // Interaksi Pasang/Hancur & Simpan
     canvas.addEventListener("mousedown", (e) => {
         const pos = getGridPos(e.clientX, e.clientY);
         const key = `${pos.col},${pos.row}`;
+        
         if (e.button === 0) world[key] = selectedBlock; 
         else if (e.button === 2) delete world[key];
+        
+        // Simpan setiap kali ada perubahan
+        localStorage.setItem("mySandboxWorld", JSON.stringify(world));
     });
 
+    // Pilih Blok pakai keyboard
     window.addEventListener("keydown", (e) => {
         keys[e.code] = true;
         if (blocks[e.key]) {
@@ -101,26 +120,39 @@
     window.onkeyup = (e) => keys[e.code] = false;
 
     function update() {
+        // Gerak Horizontal
         player.vx = 0;
         if (keys["KeyA"]) player.vx = -player.speed;
         if (keys["KeyD"]) player.vx = player.speed;
+
+        // Gravitasi
         player.vy += player.gravity;
 
+        // Cek Tabrakan X
         player.x += player.vx;
         if (isBlocked(player.x, player.y + 5) || isBlocked(player.x + player.w, player.y + 5) || 
             isBlocked(player.x, player.y + player.h - 5) || isBlocked(player.x + player.w, player.y + player.h - 5)) {
             player.x -= player.vx;
         }
 
+        // Cek Tabrakan Y (Lantai & Atap)
         player.grounded = false;
         player.y += player.vy;
+        
+        // Kaki menabrak blok
         if (isBlocked(player.x + 5, player.y + player.h) || isBlocked(player.x + player.w - 5, player.y + player.h)) {
             let p = getGridPos(player.x, player.y + player.h);
             player.y = p.row * tileSize - player.h;
             player.vy = 0;
             player.grounded = true;
+        } 
+        // Kepala menabrak blok
+        else if (isBlocked(player.x + 5, player.y) || isBlocked(player.x + player.w - 5, player.y)) {
+            player.vy = 0;
+            player.y += 2;
         }
 
+        // Lompat
         if (keys["KeyW"] && player.grounded) {
             player.vy = player.jumpPower;
             player.grounded = false;
@@ -129,18 +161,38 @@
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Gambar Grid Halus
+        ctx.strokeStyle = "rgba(255,255,255,0.15)";
+        for(let x=0; x<canvas.width; x+=tileSize) {
+            ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+        }
+
+        // Gambar Blok Dunia
         for (let key in world) {
             const [col, row] = key.split(",").map(Number);
             ctx.fillStyle = world[key];
             ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
-            ctx.strokeStyle = "rgba(0,0,0,0.2)";
+            
+            // Garis tepi tiap blok
+            ctx.strokeStyle = "rgba(0,0,0,0.3)";
             ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
         }
-        ctx.fillStyle = "#FFD700";
+
+        // Gambar Karakter
+        ctx.fillStyle = "#FFD700"; // Warna Kuning Emas
         ctx.fillRect(player.x, player.y, player.w, player.h);
+        
+        // Detail Wajah Karakter (Mata mengikuti arah jalan)
+        ctx.fillStyle = "black";
+        let eyeX = player.vx >= 0 ? player.x + 20 : player.x + 5;
+        ctx.fillRect(eyeX, player.y + 10, 6, 6);
+
         update();
         requestAnimationFrame(draw);
     }
+    
+    // Mulai Game
     draw();
 </script>
 </body>
