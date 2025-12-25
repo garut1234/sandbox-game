@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sandbox Builder - Dasar Breaworlds</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: Arial; }
+        canvas { display: block; background: #87CEEB; }
+        .info { position: absolute; top: 10; left: 10; background: rgba(0,0,0,0.5); color: white; padding: 10px; border-radius: 5px; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div class="info">
+    W/A/S/D: Gerak | Klik Kiri: Pasang Blok | Klik Kanan: Hancurkan Blok
+</div>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const tileSize = 40; // Ukuran satu kotak blok
+    let world = {}; // Menyimpan data blok yang dipasang
+
+    let player = {
+        x: 100, y: 100,
+        w: 30, h: 35,
+        speed: 5
+    };
+
+    // Fungsi koordinat grid (mengubah posisi pixel jadi koordinat kotak 0,1,2...)
+    function getGridPos(x, y) {
+        return {
+            col: Math.floor(x / tileSize),
+            row: Math.floor(y / tileSize)
+        };
+    }
+
+    // Event Klik Mouse
+    canvas.addEventListener("mousedown", (e) => {
+        const pos = getGridPos(e.clientX, e.clientY);
+        const key = `${pos.col},${pos.row}`;
+
+        if (e.button === 0) { // Klik Kiri: Pasang
+            world[key] = "#8B4513"; // Warna tanah
+        } else if (e.button === 2) { // Klik Kanan: Hancur
+            delete world[key];
+        }
+    });
+
+    // Mencegah menu klik kanan muncul
+    canvas.oncontextmenu = (e) => e.preventDefault();
+
+    let keys = {};
+    window.onkeydown = (e) => keys[e.code] = true;
+    window.onkeyup = (e) => keys[e.code] = false;
+
+    function update() {
+        if (keys["KeyA"]) player.x -= player.speed;
+        if (keys["KeyD"]) player.x += player.speed;
+        if (keys["KeyW"]) player.y -= player.speed;
+        if (keys["KeyS"]) player.y += player.speed;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 1. Gambar Grid (Garis bantu)
+        ctx.strokeStyle = "rgba(255,255,255,0.2)";
+        for(let x=0; x<canvas.width; x+=tileSize) {
+            ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+        }
+        for(let y=0; y<canvas.height; y+=tileSize) {
+            ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+        }
+
+        // 2. Gambar Blok yang sudah dipasang
+        for (let key in world) {
+            const [col, row] = key.split(",").map(Number);
+            ctx.fillStyle = world[key];
+            ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+            ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
+        }
+
+        // 3. Gambar Karakter (Pemain)
+        ctx.fillStyle = "#FFD700";
+        ctx.fillRect(player.x, player.y, player.w, player.h);
+
+        update();
+        requestAnimationFrame(draw);
+    }
+
+    draw();
+</script>
+</body>
+</html>
