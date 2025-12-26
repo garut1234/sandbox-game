@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Full Lobi & World</title>
+    <title>Sandbox Pro - Restricted Name Command</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; }
         canvas { display: block; }
@@ -19,7 +19,6 @@
             border: 2px solid rgba(255, 255, 255, 0.3); text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        h1 { margin-bottom: 10px; letter-spacing: 3px; }
         input#nameInput {
             padding: 15px; font-size: 18px; border-radius: 12px; border: none;
             width: 280px; margin-bottom: 20px; outline: none; text-align: center;
@@ -29,7 +28,6 @@
             padding: 15px 50px; font-size: 18px; cursor: pointer;
             background: #00ff00; border: none; border-radius: 12px;
             font-weight: bold; color: #000; transition: 0.3s;
-            box-shadow: 0 5px 15px rgba(0,255,0,0.3);
         }
         button#startBtn:hover { transform: scale(1.05); background: #00e600; }
 
@@ -57,8 +55,8 @@
 
 <div id="loginScreen">
     <div class="login-box">
-        <h1>SANDBOX GAME</h1>
-        <p style="opacity: 0.8;">Selamat datang! Silakan buat akun.</p>
+        <h1>SANDBOX WORLD</h1>
+        <p>Silakan buat akun untuk bermain.</p>
         <input type="text" id="nameInput" placeholder="Masukkan nama..." maxlength="15">
         <br>
         <button id="startBtn">MASUK GAME</button>
@@ -87,7 +85,6 @@
     let playerRole = localStorage.getItem("playerRole") || "PLAYER";
     let rainbowHue = 0;
 
-    // FUNGSI TOMBOL LOGIN
     document.getElementById("startBtn").onclick = function() {
         const inputName = document.getElementById("nameInput").value.trim();
         if(inputName !== "") {
@@ -96,9 +93,9 @@
             document.getElementById("hpBox").style.display = "block";
             document.getElementById("invBar").style.display = "flex";
             gameStarted = true;
-            generateFullWorld(); // Buat tanah full pas masuk
+            generateFullWorld();
         } else {
-            alert("Nama tidak boleh kosong!");
+            alert("Nama harus diisi!");
         }
     };
 
@@ -119,20 +116,14 @@
     const blocks = { "1": "#8B4513", "2": "#808080", "3": "#228B22", "4": "#FF4500" };
     let selectedBlock = "#8B4513"; 
 
-    // GENERATE DUNIA FULL KE BAWAH
     function generateFullWorld() {
         world = {};
         let totalCols = 210; 
         let totalRows = Math.ceil(canvas.height / tileSize);
         let starterLevel = 10; 
-
         for(let col = 0; col < totalCols; col++) {
             for(let row = starterLevel; row < totalRows; row++) {
-                if (row === totalRows - 1) {
-                    world[`${col},${row}`] = "#5d4037"; // Bedrock dasar
-                } else {
-                    world[`${col},${row}`] = "#8B4513"; // Dirt mengisi kebawah
-                }
+                world[`${col},${row}`] = (row === totalRows - 1) ? "#5d4037" : "#8B4513";
             }
         }
     }
@@ -145,20 +136,28 @@
             const action = parts[0].toLowerCase();
             
             if (action === "/?" || action === "/help") {
-                alert("COMMAND LIST:\n/setrole [dev/mod/player]\n/name [nama baru]\n/ghost : Mode terbang\n/reset : Reset tanah full\n/kill : Mati");
-            } else if (action === "/setrole" && parts[1]) {
+                alert("CMD:\n/setrole [dev/mod/player]\n/name [nama] (Khusus DEV/MOD)\n/ghost | /reset (DEV) | /kill");
+            } 
+            else if (action === "/setrole" && parts[1]) {
                 playerRole = parts[1].toUpperCase();
                 localStorage.setItem("playerRole", playerRole);
-            } else if (action === "/name" && parts[1]) {
-                playerName = parts.slice(1).join(" ");
-            } else if (action === "/reset") {
-                if(playerRole === "DEV") { generateFullWorld(); }
-                else { alert("Khusus Developer!"); }
-            } else if (action === "/ghost") {
-                ghostMode = !ghostMode; player.vy = 0;
-            } else if (action === "/kill") {
-                player.hp = 0;
-            }
+            } 
+            // PERBAIKAN: CEK ROLE UNTUK COMMAND /NAME
+            else if (action === "/name" && parts[1]) {
+                if (playerRole === "DEV" || playerRole === "MOD") {
+                    playerName = parts.slice(1).join(" ");
+                    currentMessage = "Nama diubah menjadi " + playerName;
+                    chatTimer = 120;
+                } else {
+                    alert("Maaf, hanya DEVELOPER atau MODERATOR yang bisa ganti nama di tengah game!");
+                }
+            } 
+            else if (action === "/reset") {
+                if(playerRole === "DEV") generateFullWorld();
+                else alert("Hanya Developer!");
+            } 
+            else if (action === "/ghost") { ghostMode = !ghostMode; player.vy = 0; }
+            else if (action === "/kill") { player.hp = 0; }
         } else {
             currentMessage = input;
             chatTimer = 300;
@@ -187,85 +186,4 @@
 
     canvas.addEventListener("mousedown", (e) => {
         if (!gameStarted || isChatting) return;
-        const pos = { col: Math.floor(e.clientX / tileSize), row: Math.floor(e.clientY / tileSize) };
-        if (e.button === 0) world[`${pos.col},${pos.row}`] = selectedBlock; 
-        else if (e.button === 2) delete world[`${pos.col},${pos.row}`];
-    });
-
-    canvas.oncontextmenu = (e) => e.preventDefault();
-    let keys = {};
-    window.onkeyup = (e) => keys[e.code] = false;
-
-    function update() {
-        if (!gameStarted || isChatting) return;
-        player.vx = 0;
-        if (keys["KeyA"]) player.vx = -player.speed;
-        if (keys["KeyD"]) player.vx = player.speed;
-        
-        if (ghostMode) {
-            player.vy = 0;
-            if (keys["KeyW"]) player.y -= player.speed;
-            if (keys["KeyS"]) player.y += player.speed;
-        } else {
-            player.vy += player.gravity;
-            player.y += player.vy;
-            let pRow = Math.floor((player.y + player.h) / tileSize);
-            let pCol = Math.floor((player.x + player.w/2) / tileSize);
-            if (world[`${pCol},${pRow}`]) {
-                player.y = pRow * tileSize - player.h;
-                player.vy = 0; player.grounded = true;
-            } else { player.grounded = false; }
-            if (keys["KeyW"] && player.grounded) { player.vy = player.jumpPower; player.grounded = false; }
-        }
-        player.x += player.vx;
-        
-        rainbowHue = (rainbowHue + 3) % 360;
-        if (chatTimer > 0) chatTimer--;
-        if (player.hp <= 0) { player.hp = 100; player.x = 100; player.y = 200; player.vy = 0; }
-        document.getElementById("hpBar").style.width = player.hp + "%";
-    }
-
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (!gameStarted) { requestAnimationFrame(draw); return; }
-
-        for (let key in world) {
-            const [col, row] = key.split(",").map(Number);
-            ctx.fillStyle = world[key];
-            ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
-        }
-
-        // Karakter
-        ctx.fillStyle = "#FFD700";
-        ctx.fillRect(player.x, player.y, player.w, player.h);
-
-        // Nametag & Role
-        let rolePrefix = (playerRole === "DEV") ? "[DEV] " : (playerRole === "MOD") ? "[MOD] " : "";
-        let roleColor = "white";
-        if (playerRole === "DEV") roleColor = `hsl(${rainbowHue}, 100%, 60%)`;
-        else if (playerRole === "MOD") roleColor = "#A020F0";
-
-        ctx.font = "bold 15px Arial";
-        ctx.textAlign = "center";
-        ctx.shadowColor = "black"; ctx.shadowBlur = 4;
-        ctx.fillStyle = roleColor;
-        ctx.fillText(rolePrefix + playerName, player.x + player.w / 2, player.y - 12);
-        ctx.shadowBlur = 0;
-
-        // Chat Bubble
-        if (chatTimer > 0) {
-            ctx.font = "16px Arial";
-            const tw = ctx.measureText(currentMessage).width;
-            ctx.fillStyle = "white";
-            ctx.beginPath(); ctx.roundRect(player.x + player.w/2 - (tw+20)/2, player.y - 65, tw + 20, 30, 10); ctx.fill();
-            ctx.fillStyle = "black";
-            ctx.fillText(currentMessage, player.x + player.w/2, player.y - 45);
-        }
-
-        update();
-        requestAnimationFrame(draw);
-    }
-    draw();
-</script>
-</body>
-</html>
+        const pos = { col: Math
