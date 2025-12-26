@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Restricted Name Command</title>
+    <title>Sandbox Pro - Permission Update</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; }
         canvas { display: block; }
 
-        /* LOBY / LOGIN SCREEN */
+        /* LOBY SCREEN */
         #loginScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
@@ -17,60 +17,62 @@
             background: rgba(255, 255, 255, 0.15); padding: 40px;
             border-radius: 25px; backdrop-filter: blur(15px);
             border: 2px solid rgba(255, 255, 255, 0.3); text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         input#nameInput {
             padding: 15px; font-size: 18px; border-radius: 12px; border: none;
             width: 280px; margin-bottom: 20px; outline: none; text-align: center;
-            background: rgba(255,255,255,0.9);
         }
         button#startBtn {
             padding: 15px 50px; font-size: 18px; cursor: pointer;
-            background: #00ff00; border: none; border-radius: 12px;
-            font-weight: bold; color: #000; transition: 0.3s;
+            background: #00ff00; border: none; border-radius: 12px; font-weight: bold;
         }
-        button#startBtn:hover { transform: scale(1.05); background: #00e600; }
 
         /* GAME UI */
-        .hp-container { position: absolute; top: 15px; right: 20px; width: 200px; height: 25px; background: #333; border: 3px solid #000; border-radius: 15px; overflow: hidden; z-index: 1000; display: none; }
-        .hp-bar { width: 100%; height: 100%; background: #ff4444; transition: width 0.3s; }
+        .hp-container { position: absolute; top: 15px; right: 20px; width: 200px; height: 25px; background: #333; border: 3px solid #000; border-radius: 15px; overflow: hidden; display: none; }
+        .hp-bar { width: 100%; height: 100%; background: #ff4444; }
         
         #chatInput { 
-            position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); 
+            position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); 
             width: 400px; padding: 12px; background: rgba(0,0,0,0.9); color: #fff; 
-            border: 2px solid #00ff00; border-radius: 20px; display: none; z-index: 3000; 
-            outline: none; text-align: center; font-size: 16px;
+            border: 2px solid #00ff00; border-radius: 20px; display: none; z-index: 3000; outline: none; text-align: center;
         }
 
-        .inventory-bar { 
-            position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); 
-            display: none; background: #222; padding: 10px; border: 4px solid #000; 
-            border-radius: 15px; z-index: 2000;
+        /* INVENTORY 30 SLOT */
+        .inventory-wrapper {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: none; background: rgba(0,0,0,0.8); padding: 10px; 
+            border: 4px solid #444; border-radius: 15px; z-index: 2000;
+            max-width: 95vw; overflow-x: auto;
         }
-        .slot { width: 55px; height: 55px; margin: 0 5px; border: 3px solid #444; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; border-radius: 10px; }
-        .active { border-color: #00ff00; box-shadow: 0 0 15px #00ff00; transform: scale(1.1); }
+        .inventory-grid {
+            display: grid; grid-template-columns: repeat(15, 50px); grid-template-rows: repeat(2, 50px); gap: 5px;
+        }
+        .slot { 
+            width: 50px; height: 50px; background: #333; border: 2px solid #555; 
+            display: flex; justify-content: center; align-items: center; 
+            border-radius: 8px; cursor: pointer; position: relative;
+        }
+        .slot.active { border-color: #00ff00; background: #444; box-shadow: 0 0 10px #00ff00; }
+        .item-icon { width: 30px; height: 30px; pointer-events: none; }
     </style>
 </head>
 <body>
 
 <div id="loginScreen">
     <div class="login-box">
-        <h1>SANDBOX WORLD</h1>
-        <p>Silakan buat akun untuk bermain.</p>
-        <input type="text" id="nameInput" placeholder="Masukkan nama..." maxlength="15">
+        <h1>SANDBOX ADMIN</h1>
+        <p>Gunakan /setrole dev (untuk admin baru)</p>
+        <input type="text" id="nameInput" placeholder="Nama..." maxlength="15">
         <br>
         <button id="startBtn">MASUK GAME</button>
     </div>
 </div>
 
 <div id="hpBox" class="hp-container"><div id="hpBar" class="hp-bar"></div></div>
-<input type="text" id="chatInput" placeholder="Ketik /? untuk command..." maxlength="50">
+<input type="text" id="chatInput" placeholder="Ketik /? untuk bantuan...">
 
-<div id="invBar" class="inventory-bar">
-    <div id="slot1" class="slot active" style="background-color: #8B4513;">1</div>
-    <div id="slot2" class="slot" style="background-color: #808080;">2</div>
-    <div id="slot3" class="slot" style="background-color: #228B22;">3</div>
-    <div id="slot4" class="slot" style="background-color: #FF4500;">4</div>
+<div id="invWrapper" class="inventory-wrapper">
+    <div id="invGrid" class="inventory-grid"></div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -84,28 +86,49 @@
     let playerName = "";
     let playerRole = localStorage.getItem("playerRole") || "PLAYER";
     let rainbowHue = 0;
+    let selectedSlotIndex = 0;
+
+    const items = [
+        { id: 1, name: "Dirt", color: "#8B4513", type: "block" },
+        { id: 2, name: "Stone", color: "#808080", type: "block" },
+        { id: 3, name: "Grass", color: "#228B22", type: "block" },
+        { id: 4, name: "Lava", color: "#FF4500", type: "block" },
+        { id: 5, name: "Pouch", color: "#D2B48C", type: "tool" },
+        { id: 6, name: "Wrench", color: "#C0C0C0", type: "tool" },
+    ];
+    for(let i = 7; i <= 30; i++) items.push({ id: i, name: "Empty", color: "transparent", type: "none" });
+
+    const invGrid = document.getElementById("invGrid");
+    items.forEach((item, index) => {
+        const slot = document.createElement("div");
+        slot.className = "slot" + (index === 0 ? " active" : "");
+        slot.id = "slot-" + index;
+        if (item.type === "block") slot.innerHTML = `<div style="width:25px; height:25px; background:${item.color}"></div>`;
+        else if (item.name === "Pouch") slot.innerHTML = `<svg viewBox="0 0 24 24" class="item-icon"><path fill="${item.color}" d="M12,2A3,3 0 0,0 9,5C9,5.28 9.04,5.55 9.12,5.81L5.64,9.29C5.23,9.7 5,10.26 5,10.88V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V10.88C19,10.26 18.77,9.7 18.36,9.29L14.88,5.81C14.96,5.55 15,5.28 15,5A3,3 0 0,0 12,2Z"/></svg>`;
+        else if (item.name === "Wrench") slot.innerHTML = `<svg viewBox="0 0 24 24" class="item-icon"><path fill="${item.color}" d="M13.46,12L19,17.54V19H17.54L12,13.46L6.46,19H5V17.54L10.54,12L5,6.46V5H6.46L12,10.54L17.54,5H19V6.46L13.46,12Z"/></svg>`;
+        slot.onclick = () => selectSlot(index);
+        invGrid.appendChild(slot);
+    });
+
+    function selectSlot(index) {
+        document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
+        document.getElementById('slot-' + index).classList.add('active');
+        selectedSlotIndex = index;
+    }
 
     document.getElementById("startBtn").onclick = function() {
-        const inputName = document.getElementById("nameInput").value.trim();
-        if(inputName !== "") {
-            playerName = inputName;
+        if(document.getElementById("nameInput").value.trim() !== "") {
+            playerName = document.getElementById("nameInput").value;
             document.getElementById("loginScreen").style.display = "none";
             document.getElementById("hpBox").style.display = "block";
-            document.getElementById("invBar").style.display = "flex";
+            document.getElementById("invWrapper").style.display = "block";
             gameStarted = true;
             generateFullWorld();
-        } else {
-            alert("Nama harus diisi!");
         }
     };
 
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        if(gameStarted) generateFullWorld();
-    }
-    window.addEventListener('resize', resize);
-    resize();
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; if(gameStarted) generateFullWorld(); }
+    window.addEventListener('resize', resize); resize();
 
     const tileSize = 40;
     let world = {};
@@ -113,16 +136,12 @@
     let ghostMode = false;
     let currentMessage = "";
     let chatTimer = 0;
-    const blocks = { "1": "#8B4513", "2": "#808080", "3": "#228B22", "4": "#FF4500" };
-    let selectedBlock = "#8B4513"; 
 
     function generateFullWorld() {
         world = {};
-        let totalCols = 210; 
-        let totalRows = Math.ceil(canvas.height / tileSize);
-        let starterLevel = 10; 
+        let totalCols = 210; let totalRows = Math.ceil(canvas.height / tileSize);
         for(let col = 0; col < totalCols; col++) {
-            for(let row = starterLevel; row < totalRows; row++) {
+            for(let row = 10; row < totalRows; row++) {
                 world[`${col},${row}`] = (row === totalRows - 1) ? "#5d4037" : "#8B4513";
             }
         }
@@ -135,60 +154,53 @@
             const parts = input.split(" ");
             const action = parts[0].toLowerCase();
             
-            if (action === "/?" || action === "/help") {
-                alert("CMD:\n/setrole [dev/mod/player]\n/name [nama] (Khusus DEV/MOD)\n/ghost | /reset (DEV) | /kill");
+            // --- LOGIKA PERMISSION ---
+            if (action === "/setrole" && parts[1]) {
+                if (playerRole === "DEV") {
+                    playerRole = parts[1].toUpperCase();
+                    localStorage.setItem("playerRole", playerRole);
+                } else { alert("Hanya Developer yang bisa ganti role!"); }
             } 
-            else if (action === "/setrole" && parts[1]) {
-                playerRole = parts[1].toUpperCase();
-                localStorage.setItem("playerRole", playerRole);
-            } 
-            // PERBAIKAN: CEK ROLE UNTUK COMMAND /NAME
-            else if (action === "/name" && parts[1]) {
+            else if (action === "/ghost") {
                 if (playerRole === "DEV" || playerRole === "MOD") {
-                    playerName = parts.slice(1).join(" ");
-                    currentMessage = "Nama diubah menjadi " + playerName;
-                    chatTimer = 120;
-                } else {
-                    alert("Maaf, hanya DEVELOPER atau MODERATOR yang bisa ganti nama di tengah game!");
-                }
-            } 
+                    ghostMode = !ghostMode; player.vy = 0;
+                    currentMessage = ghostMode ? "Ghost Mode ON" : "Ghost Mode OFF"; chatTimer = 100;
+                } else { alert("Akses Ditolak: Ghost hanya untuk Dev & Mod!"); }
+            }
+            else if (action === "/name" && parts[1]) {
+                if (playerRole === "DEV" || playerRole === "MOD") { playerName = parts.slice(1).join(" "); } 
+                else { alert("Player biasa tidak bisa ganti nama!"); }
+            }
             else if (action === "/reset") {
-                if(playerRole === "DEV") generateFullWorld();
-                else alert("Hanya Developer!");
-            } 
-            else if (action === "/ghost") { ghostMode = !ghostMode; player.vy = 0; }
+                if (playerRole === "DEV") { generateFullWorld(); } 
+                else { alert("Reset hanya untuk Developer!"); }
+            }
             else if (action === "/kill") { player.hp = 0; }
+            else if (action === "/?") { alert("/setrole (Dev)\n/ghost (Dev/Mod)\n/name (Dev/Mod)\n/reset (Dev)\n/kill"); }
         } else {
-            currentMessage = input;
-            chatTimer = 300;
+            currentMessage = input; chatTimer = 300;
         }
     }
 
     window.addEventListener("keydown", (e) => {
         if (!gameStarted) return;
         if (e.code === "Enter") {
-            if (!isChatting) {
-                isChatting = true; chatInput.style.display = "block"; chatInput.focus();
-            } else {
-                if (chatInput.value.trim() !== "") processCommandOrChat(chatInput.value);
-                chatInput.value = ""; chatInput.style.display = "none"; isChatting = false;
-            }
+            if (!isChatting) { isChatting = true; chatInput.style.display = "block"; chatInput.focus(); }
+            else { if (chatInput.value.trim() !== "") processCommandOrChat(chatInput.value); chatInput.value = ""; chatInput.style.display = "none"; isChatting = false; }
             return;
         }
         if (isChatting) return;
         keys[e.code] = true;
-        if (blocks[e.key]) {
-            selectedBlock = blocks[e.key];
-            document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
-            document.getElementById('slot' + e.key).classList.add('active');
-        }
+        if (e.key >= 1 && e.key <= 9) selectSlot(parseInt(e.key) - 1);
     });
 
     canvas.addEventListener("mousedown", (e) => {
         if (!gameStarted || isChatting) return;
         const pos = { col: Math.floor(e.clientX / tileSize), row: Math.floor(e.clientY / tileSize) };
-        if (e.button === 0) world[`${pos.col},${pos.row}`] = selectedBlock; 
+        const item = items[selectedSlotIndex];
+        if (e.button === 0 && item.type === "block") world[`${pos.col},${pos.row}`] = item.color;
         else if (e.button === 2) delete world[`${pos.col},${pos.row}`];
+        else if (e.button === 0 && item.type === "tool") { currentMessage = "Menggunakan " + item.name; chatTimer = 60; }
     });
 
     canvas.oncontextmenu = (e) => e.preventDefault();
@@ -210,14 +222,11 @@
             player.y += player.vy;
             let pRow = Math.floor((player.y + player.h) / tileSize);
             let pCol = Math.floor((player.x + player.w/2) / tileSize);
-            if (world[`${pCol},${pRow}`]) {
-                player.y = pRow * tileSize - player.h;
-                player.vy = 0; player.grounded = true;
-            } else { player.grounded = false; }
+            if (world[`${pCol},${pRow}`]) { player.y = pRow * tileSize - player.h; player.vy = 0; player.grounded = true; } 
+            else player.grounded = false;
             if (keys["KeyW"] && player.grounded) { player.vy = player.jumpPower; player.grounded = false; }
         }
         player.x += player.vx;
-        
         rainbowHue = (rainbowHue + 3) % 360;
         if (chatTimer > 0) chatTimer--;
         if (player.hp <= 0) { player.hp = 100; player.x = 100; player.y = 200; player.vy = 0; }
@@ -227,37 +236,23 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (!gameStarted) { requestAnimationFrame(draw); return; }
-
         for (let key in world) {
             const [col, row] = key.split(",").map(Number);
             ctx.fillStyle = world[key];
             ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
         }
-
         ctx.fillStyle = "#FFD700";
         ctx.fillRect(player.x, player.y, player.w, player.h);
 
-        let rolePrefix = (playerRole === "DEV") ? "[DEV] " : (playerRole === "MOD") ? "[MOD] " : "";
-        let roleColor = "white";
-        if (playerRole === "DEV") roleColor = `hsl(${rainbowHue}, 100%, 60%)`;
-        else if (playerRole === "MOD") roleColor = "#A020F0";
-
-        ctx.font = "bold 15px Arial";
-        ctx.textAlign = "center";
-        ctx.shadowColor = "black"; ctx.shadowBlur = 4;
-        ctx.fillStyle = roleColor;
-        ctx.fillText(rolePrefix + playerName, player.x + player.w / 2, player.y - 12);
-        ctx.shadowBlur = 0;
+        let rColor = (playerRole === "DEV") ? `hsl(${rainbowHue}, 100%, 60%)` : (playerRole === "MOD" ? "#A020F0" : "white");
+        ctx.font = "bold 15px Arial"; ctx.textAlign = "center";
+        ctx.fillStyle = rColor; ctx.fillText((playerRole !== "PLAYER" ? "["+playerRole+"] " : "") + playerName, player.x + player.w/2, player.y - 12);
 
         if (chatTimer > 0) {
-            ctx.font = "16px Arial";
-            const tw = ctx.measureText(currentMessage).width;
-            ctx.fillStyle = "white";
-            ctx.beginPath(); ctx.roundRect(player.x + player.w/2 - (tw+20)/2, player.y - 65, tw + 20, 30, 10); ctx.fill();
-            ctx.fillStyle = "black";
-            ctx.fillText(currentMessage, player.x + player.w/2, player.y - 45);
+            ctx.font = "16px Arial"; const tw = ctx.measureText(currentMessage).width;
+            ctx.fillStyle = "white"; ctx.beginPath(); ctx.roundRect(player.x + player.w/2 - (tw+20)/2, player.y - 65, tw + 20, 30, 10); ctx.fill();
+            ctx.fillStyle = "black"; ctx.fillText(currentMessage, player.x + player.w/2, player.y - 45);
         }
-
         update();
         requestAnimationFrame(draw);
     }
