@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Rainbow Dev Role</title>
+    <title>Sandbox Pro - Rainbow Full Power</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; }
         canvas { display: block; }
@@ -69,10 +69,9 @@
     let isChatting = false;
     let ghostMode = false;
     
-    // Variabel Nama & Role
     let playerName = localStorage.getItem("playerName") || "Player";
     let playerRole = localStorage.getItem("playerRole") || "PLAYER"; 
-    let rainbowHue = 0; // Untuk efek warna pelangi
+    let rainbowHue = 0;
 
     let currentMessage = "";
     let chatTimer = 0;
@@ -80,14 +79,22 @@
     const blocks = { "1": "#8B4513", "2": "#808080", "3": "#228B22", "4": "#FF4500" };
     let selectedBlock = "#8B4513"; 
 
+    // --- FUNGSI GENERATE DUNIA FULL KE BAWAH ---
     function generateFullWorld() {
         world = {};
-        let groundLevel = Math.floor(canvas.height / tileSize) - 1;
+        let totalCols = 210;
+        let totalRows = Math.ceil(canvas.height / tileSize);
         let starterLevel = 10;
-        for(let col = 0; col < 210; col++) {
-            world[`${col},${groundLevel}`] = "#5d4037";
-            world[`${col},${starterLevel}`] = "#8B4513";
-            world[`${col},${starterLevel + 1}`] = "#8B4513";
+
+        for(let col = 0; col < totalCols; col++) {
+            // Isi dari starterLevel sampai paling bawah layar
+            for(let row = starterLevel; row < totalRows; row++) {
+                if (row === totalRows - 1) {
+                    world[`${col},${row}`] = "#5d4037"; // Bedrock di paling bawah
+                } else {
+                    world[`${col},${row}`] = "#8B4513"; // Dirt mengisi semua celah
+                }
+            }
         }
     }
 
@@ -104,36 +111,22 @@
         x: 100, y: 300, w: 30, h: 40,
         vx: 0, vy: 0, speed: 5,
         jumpPower: -12, gravity: 0.6, grounded: false,
-        hp: 100, dmgCooldown: 0
+        hp: 100
     };
 
     function processCommandOrChat(input) {
         if (input.startsWith("/")) {
             const parts = input.split(" ");
             const action = parts[0].toLowerCase();
-
-            if (action === "/?" || action === "/help") {
-                alert("COMMANDS:\n/setrole [dev/mod/player]\n/name [nama]\n/ghost | /kill | /reset");
-            } 
-            else if (action === "/setrole" && parts[1]) {
-                const newRole = parts[1].toUpperCase();
-                if (["DEV", "MOD", "PLAYER"].includes(newRole)) {
-                    playerRole = newRole;
-                    localStorage.setItem("playerRole", playerRole);
-                }
-            }
-            else if (action === "/name" && parts[1]) {
+            if (action === "/setrole" && parts[1]) {
+                playerRole = parts[1].toUpperCase();
+                localStorage.setItem("playerRole", playerRole);
+            } else if (action === "/reset") {
+                generateFullWorld(); saveData();
+            } else if (action === "/name" && parts[1]) {
                 playerName = parts.slice(1).join(" ");
                 localStorage.setItem("playerName", playerName);
-            } 
-            else if (action === "/ghost") {
-                ghostMode = !ghostMode; player.vy = 0;
-            } 
-            else if (action === "/reset") {
-                if (playerRole === "DEV") { generateFullWorld(); saveData(); }
-                else { alert("Khusus Developer!"); }
-            } 
-            else if (action === "/kill") { player.hp = 0; }
+            }
         } else {
             currentMessage = input;
             chatTimer = 300;
@@ -142,12 +135,8 @@
 
     window.addEventListener("keydown", (e) => {
         if (e.code === "Enter") {
-            if (!isChatting) {
-                isChatting = true; chatInput.style.display = "block"; chatInput.focus();
-            } else {
-                if (chatInput.value.trim() !== "") processCommandOrChat(chatInput.value);
-                chatInput.value = ""; chatInput.style.display = "none"; isChatting = false;
-            }
+            if (!isChatting) { isChatting = true; chatInput.style.display = "block"; chatInput.focus(); }
+            else { if (chatInput.value.trim() !== "") processCommandOrChat(chatInput.value); chatInput.value = ""; chatInput.style.display = "none"; isChatting = false; }
             return;
         }
         if (isChatting) return;
@@ -177,31 +166,18 @@
         player.vx = 0;
         if (keys["KeyA"]) player.vx = -player.speed;
         if (keys["KeyD"]) player.vx = player.speed;
-
-        if (ghostMode) {
-            player.vy = 0;
-            if (keys["KeyW"]) player.y -= player.speed;
-            if (keys["KeyS"]) player.y += player.speed;
-            player.x += player.vx;
-        } else {
-            player.vy += player.gravity;
-            player.x += player.vx;
-            player.y += player.vy;
-            let pRow = Math.floor((player.y + player.h) / tileSize);
-            let pCol = Math.floor((player.x + player.w/2) / tileSize);
-            if (world[`${pCol},${pRow}`]) {
-                player.y = pRow * tileSize - player.h;
-                player.vy = 0; player.grounded = true;
-            } else { player.grounded = false; }
-            if (keys["KeyW"] && player.grounded) { player.vy = player.jumpPower; player.grounded = false; }
-        }
-        
-        // Animasi warna pelangi
-        rainbowHue = (rainbowHue + 2) % 360;
-
-        document.getElementById("hpBar").style.width = player.hp + "%";
+        player.vy += player.gravity;
+        player.x += player.vx;
+        player.y += player.vy;
+        let pRow = Math.floor((player.y + player.h) / tileSize);
+        let pCol = Math.floor((player.x + player.w/2) / tileSize);
+        if (world[`${pCol},${pRow}`]) {
+            player.y = pRow * tileSize - player.h;
+            player.vy = 0; player.grounded = true;
+        } else { player.grounded = false; }
+        if (keys["KeyW"] && player.grounded) { player.vy = player.jumpPower; player.grounded = false; }
+        rainbowHue = (rainbowHue + 3) % 360; // Kecepatan pelangi
         if (chatTimer > 0) chatTimer--;
-        if (player.hp <= 0) { player.hp = 100; player.x = 100; player.y = 300; player.vy = 0; }
     }
 
     function draw() {
@@ -215,43 +191,34 @@
         ctx.fillStyle = "#FFD700";
         ctx.fillRect(player.x, player.y, player.w, player.h);
 
-        // --- DRAW NAMETAG ---
-        let rolePrefix = "";
+        // --- NAMETAG FIX (RAINBOW FULL) ---
+        let rolePrefix = (playerRole === "DEV") ? "[DEV] " : (playerRole === "MOD") ? "[MOD] " : "";
+        let fullText = rolePrefix + playerName;
+        
         let roleColor = "white";
+        if (playerRole === "DEV") roleColor = `hsl(${rainbowHue}, 100%, 60%)`;
+        else if (playerRole === "MOD") roleColor = "#A020F0";
 
-        if (playerRole === "DEV") {
-            rolePrefix = "[DEV] ";
-            roleColor = `hsl(${rainbowHue}, 100%, 50%)`; // Efek Pelangi
-        } else if (playerRole === "MOD") {
-            rolePrefix = "[MOD] ";
-            roleColor = "#A020F0"; // Ungu
-        }
-
-        ctx.font = "bold 14px Arial";
+        ctx.font = "bold 15px Arial";
         ctx.textAlign = "center";
         
-        let prefixWidth = ctx.measureText(rolePrefix).width;
-        let nameWidth = ctx.measureText(playerName).width;
-        let totalCenter = player.x + player.w / 2;
-        
-        // Render Prefix
+        // Shadow biar terbaca jelas
+        ctx.shadowColor = "black";
+        ctx.shadowBlur = 4;
         ctx.fillStyle = roleColor;
-        ctx.fillText(rolePrefix, totalCenter - (nameWidth / 2), player.y - 10);
-        
-        // Render Nama
-        ctx.fillStyle = "white";
-        ctx.fillText(playerName, totalCenter + (prefixWidth / 2), player.y - 10);
+        ctx.fillText(fullText, player.x + player.w / 2, player.y - 12);
+        ctx.shadowBlur = 0;
 
         // Chat Bubble
         if (chatTimer > 0) {
             ctx.font = "16px Arial";
             const textWidth = ctx.measureText(currentMessage).width;
-            const bx = totalCenter - (textWidth + 20)/2;
-            const by = player.y - 55;
+            const bx = (player.x + player.w/2) - (textWidth + 20)/2;
+            const by = player.y - 60;
             ctx.fillStyle = "white";
             ctx.beginPath(); ctx.roundRect(bx, by, textWidth + 20, 30, 10); ctx.fill();
             ctx.fillStyle = "black";
-            ctx.fillText(currentMessage, totalCenter, by + 20);
+            ctx.fillText(currentMessage, player.x + player.w/2, by + 20);
         }
 
         update();
