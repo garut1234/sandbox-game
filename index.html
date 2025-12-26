@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Final Fix</title>
+    <title>Sandbox Pro - Chat Bubble System</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; }
         canvas { display: block; }
         
         /* UI Darah */
@@ -14,23 +14,15 @@
         }
         .hp-bar { width: 100%; height: 100%; background: #ff4444; transition: width 0.3s; }
 
-        /* UI Info */
-        .ui-info { 
-            position: absolute; top: 15px; left: 15px; 
-            background: rgba(0,0,0,0.8); color: white; 
-            padding: 12px; border-radius: 8px; font-size: 13px; z-index: 1000;
-            border-left: 5px solid #00ff00;
-        }
-
         /* Input Chat */
         #chatInput {
             position: absolute; bottom: 120px; left: 50%;
             transform: translateX(-50%);
-            width: 350px; padding: 12px;
-            background: rgba(0,0,0,0.9); color: #00ff00;
-            border: 2px solid #00ff00; border-radius: 5px;
+            width: 400px; padding: 12px;
+            background: rgba(0,0,0,0.9); color: #fff;
+            border: 2px solid #fff; border-radius: 20px;
             display: none; z-index: 3000; outline: none;
-            font-weight: bold;
+            font-size: 16px; text-align: center;
         }
 
         /* Inventory */
@@ -45,23 +37,14 @@
             border: 3px solid #444; display: flex; 
             justify-content: center; align-items: center; 
             color: white; font-weight: bold; border-radius: 10px;
-            font-size: 18px;
         }
-        .active { border-color: #00ff00; box-shadow: 0 0 15px #00ff00; transform: scale(1.1); background: rgba(255,255,255,0.1); }
+        .active { border-color: #00ff00; box-shadow: 0 0 15px #00ff00; transform: scale(1.1); }
     </style>
 </head>
 <body>
 
-<div class="ui-info">
-    <b>COMMANDS:</b><br>
-    /name [nama] - Ganti Nama<br>
-    /ghost - Mode Tembus<br>
-    /reset - Ulang Dunia<br>
-    <b>ENTER</b> untuk Chat
-</div>
-
-<div class="hp-container"><div id="hpBar" class="hp-bar"></div></div>
-<input type="text" id="chatInput" placeholder="Ketik command di sini...">
+<div id="hp-container" class="hp-container"><div id="hpBar" class="hp-bar"></div></div>
+<input type="text" id="chatInput" placeholder="Ketik pesan atau /command..." maxlength="50">
 
 <div class="inventory-bar">
     <div id="slot1" class="slot active" style="background-color: #8B4513;">1</div>
@@ -88,76 +71,58 @@
     let world = {};
     let isChatting = false;
     let ghostMode = false;
-    let playerName = localStorage.getItem("playerName") || "Player Newbie";
+    let playerName = localStorage.getItem("playerName") || "Player";
     
+    // Variabel Chat Bubble
+    let currentMessage = "";
+    let chatTimer = 0;
+
     const blocks = { "1": "#8B4513", "2": "#808080", "3": "#228B22", "4": "#FF4500" };
     let selectedBlock = "#8B4513"; 
 
-    // --- FUNGSI BUAT DUNIA LUAS ---
-    function generateStarterWorld() {
+    function generateFullWorld() {
         world = {};
         let groundLevel = Math.floor(canvas.height / tileSize) - 1;
-        
-        // Lantai Paling Bawah (Penuh se-layar)
-        for(let col = 0; col < Math.ceil(canvas.width / tileSize); col++) {
+        let starterLevel = 10;
+        for(let col = 0; col < 210; col++) {
             world[`${col},${groundLevel}`] = "#5d4037";
-        }
-
-        // Pulau Tanah yang Luas (20 blok panjang)
-        for(let row = 10; row <= 12; row++) {
-            for(let col = 0; col < 20; col++) {
-                world[`${col},${row}`] = "#8B4513";
-            }
+            world[`${col},${starterLevel}`] = "#8B4513";
+            world[`${col},${starterLevel + 1}`] = "#8B4513";
         }
     }
 
     function loadWorld() {
         const saved = localStorage.getItem("mySandboxWorld");
-        if (saved && saved !== "{}") {
-            world = JSON.parse(saved);
-        } else {
-            generateStarterWorld();
-            saveData();
-        }
+        if (saved && saved !== "{}") world = JSON.parse(saved);
+        else { generateFullWorld(); saveData(); }
     }
 
-    function saveData() {
-        localStorage.setItem("mySandboxWorld", JSON.stringify(world));
-    }
-
+    function saveData() { localStorage.setItem("mySandboxWorld", JSON.stringify(world)); }
     loadWorld();
 
     let player = {
-        x: 100, y: 200, w: 30, h: 40,
+        x: 100, y: 300, w: 30, h: 40,
         vx: 0, vy: 0, speed: 5,
         jumpPower: -12, gravity: 0.6, grounded: false,
         hp: 100, dmgCooldown: 0
     };
 
-    function getGridPos(x, y) { return { col: Math.floor(x / tileSize), row: Math.floor(y / tileSize) }; }
-    function getBlockAt(px, py) {
-        if (ghostMode) return null;
-        let p = getGridPos(px, py);
-        return world[`${p.col},${p.row}`];
-    }
-
-    function processCommand(cmd) {
-        const parts = cmd.split(" ");
-        const action = parts[0].toLowerCase();
-        
-        if (action === "/name" && parts[1]) {
-            playerName = parts.slice(1).join(" ");
-            localStorage.setItem("playerName", playerName);
-        } else if (action === "/ghost") {
-            ghostMode = !ghostMode;
-            player.vy = 0;
-        } else if (action === "/kill") {
-            player.hp = 0;
-        } else if (action === "/reset") {
-            localStorage.removeItem("mySandboxWorld");
-            generateStarterWorld();
-            saveData();
-            player.x = 100; player.y = 200;
+    function processCommandOrChat(input) {
+        if (input.startsWith("/")) {
+            const parts = input.split(" ");
+            const action = parts[0].toLowerCase();
+            if (action === "/name" && parts[1]) {
+                playerName = parts.slice(1).join(" ");
+                localStorage.setItem("playerName", playerName);
+            } else if (action === "/ghost") {
+                ghostMode = !ghostMode; player.vy = 0;
+            } else if (action === "/reset") {
+                generateFullWorld(); saveData();
+            }
+        } else {
+            // Ini adalah Chat Biasa
+            currentMessage = input;
+            chatTimer = 300; // Pesan muncul selama ~5 detik (60 fps * 5)
         }
     }
 
@@ -168,7 +133,9 @@
                 chatInput.style.display = "block";
                 chatInput.focus();
             } else {
-                if (chatInput.value.startsWith("/")) processCommand(chatInput.value);
+                if (chatInput.value.trim() !== "") {
+                    processCommandOrChat(chatInput.value);
+                }
                 chatInput.value = "";
                 chatInput.style.display = "none";
                 isChatting = false;
@@ -176,7 +143,6 @@
             return;
         }
         if (isChatting) return;
-        
         keys[e.code] = true;
         if (blocks[e.key]) {
             selectedBlock = blocks[e.key];
@@ -187,7 +153,7 @@
 
     canvas.addEventListener("mousedown", (e) => {
         if (isChatting) return;
-        const pos = getGridPos(e.clientX, e.clientY);
+        const pos = { col: Math.floor(e.clientX / tileSize), row: Math.floor(e.clientY / tileSize) };
         const key = `${pos.col},${pos.row}`;
         if (e.button === 0) world[key] = selectedBlock; 
         else if (e.button === 2) delete world[key];
@@ -210,59 +176,68 @@
             if (keys["KeyS"]) player.y += player.speed;
             player.x += player.vx;
         } else {
-            let lastVy = player.vy;
             player.vy += player.gravity;
             player.x += player.vx;
-            if (getBlockAt(player.x, player.y+5) || getBlockAt(player.x+player.w, player.y+5) || getBlockAt(player.x, player.y+player.h-5) || getBlockAt(player.x+player.w, player.y+player.h-5)) player.x -= player.vx;
-            
-            player.grounded = false;
+            // Collision sederhana
             player.y += player.vy;
-            let fL = getBlockAt(player.x + 5, player.y + player.h);
-            let fR = getBlockAt(player.x + player.w - 5, player.y + player.h);
-            
-            if (fL || fR) {
-                if (lastVy > 15) player.hp -= Math.floor(lastVy * 2);
-                if ((fL === "#FF4500" || fR === "#FF4500") && player.dmgCooldown <= 0) { player.hp -= 10; player.dmgCooldown = 30; }
-                player.y = getGridPos(player.x, player.y + player.h).row * tileSize - player.h;
-                player.vy = 0; player.grounded = true;
+            let pRow = Math.floor((player.y + player.h) / tileSize);
+            let pCol = Math.floor((player.x + player.w/2) / tileSize);
+            if (world[`${pCol},${pRow}`]) {
+                player.y = pRow * tileSize - player.h;
+                player.vy = 0;
+                player.grounded = true;
+            } else {
+                player.grounded = false;
             }
             if (keys["KeyW"] && player.grounded) { player.vy = player.jumpPower; player.grounded = false; }
         }
         
-        document.getElementById("hpBar").style.width = Math.max(0, player.hp) + "%";
-        if (player.hp <= 0) { player.hp = 100; player.x = 100; player.y = 200; player.vy = 0; }
-        if (player.dmgCooldown > 0) player.dmgCooldown--;
+        document.getElementById("hpBar").style.width = player.hp + "%";
+        if (chatTimer > 0) chatTimer--;
     }
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Draw World Blocks
+        // Render World
         for (let key in world) {
             const [col, row] = key.split(",").map(Number);
             ctx.fillStyle = world[key];
             ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
-            ctx.strokeStyle = "rgba(0,0,0,0.2)";
-            ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
         }
 
-        // DRAW PLAYER
-        ctx.save();
+        // Draw Player
+        ctx.fillStyle = "#FFD700";
         ctx.globalAlpha = ghostMode ? 0.5 : 1.0;
-        ctx.fillStyle = (player.dmgCooldown > 0) ? "white" : "#FFD700";
         ctx.fillRect(player.x, player.y, player.w, player.h);
-        
-        // DRAW NAMETAG (Pasti di atas kepala)
         ctx.globalAlpha = 1.0;
+
+        // Draw Nametag
         ctx.fillStyle = "white";
-        ctx.font = "bold 16px Arial";
+        ctx.font = "bold 14px Arial";
         ctx.textAlign = "center";
-        // Tambahkan outline hitam agar nama terlihat jelas di background biru
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 3;
-        ctx.strokeText(playerName, player.x + player.w/2, player.y - 12);
-        ctx.fillText(playerName, player.x + player.w/2, player.y - 12);
-        ctx.restore();
+        ctx.fillText(playerName, player.x + player.w/2, player.y - 10);
+
+        // --- DRAW CHAT BUBBLE ---
+        if (chatTimer > 0) {
+            const padding = 10;
+            ctx.font = "16px Arial";
+            const textWidth = ctx.measureText(currentMessage).width;
+            const bubbleW = textWidth + padding * 2;
+            const bubbleH = 30;
+            const bx = (player.x + player.w/2) - bubbleW/2;
+            const by = player.y - 50;
+
+            // Background Bubble
+            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.beginPath();
+            ctx.roundRect(bx, by, bubbleW, bubbleH, 10);
+            ctx.fill();
+
+            // Teks Chat
+            ctx.fillStyle = "black";
+            ctx.fillText(currentMessage, player.x + player.w/2, by + 20);
+        }
 
         update();
         requestAnimationFrame(draw);
