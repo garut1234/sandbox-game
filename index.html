@@ -186,4 +186,82 @@
 
     canvas.addEventListener("mousedown", (e) => {
         if (!gameStarted || isChatting) return;
-        const pos = { col: Math
+        const pos = { col: Math.floor(e.clientX / tileSize), row: Math.floor(e.clientY / tileSize) };
+        if (e.button === 0) world[`${pos.col},${pos.row}`] = selectedBlock; 
+        else if (e.button === 2) delete world[`${pos.col},${pos.row}`];
+    });
+
+    canvas.oncontextmenu = (e) => e.preventDefault();
+    let keys = {};
+    window.onkeyup = (e) => keys[e.code] = false;
+
+    function update() {
+        if (!gameStarted || isChatting) return;
+        player.vx = 0;
+        if (keys["KeyA"]) player.vx = -player.speed;
+        if (keys["KeyD"]) player.vx = player.speed;
+        
+        if (ghostMode) {
+            player.vy = 0;
+            if (keys["KeyW"]) player.y -= player.speed;
+            if (keys["KeyS"]) player.y += player.speed;
+        } else {
+            player.vy += player.gravity;
+            player.y += player.vy;
+            let pRow = Math.floor((player.y + player.h) / tileSize);
+            let pCol = Math.floor((player.x + player.w/2) / tileSize);
+            if (world[`${pCol},${pRow}`]) {
+                player.y = pRow * tileSize - player.h;
+                player.vy = 0; player.grounded = true;
+            } else { player.grounded = false; }
+            if (keys["KeyW"] && player.grounded) { player.vy = player.jumpPower; player.grounded = false; }
+        }
+        player.x += player.vx;
+        
+        rainbowHue = (rainbowHue + 3) % 360;
+        if (chatTimer > 0) chatTimer--;
+        if (player.hp <= 0) { player.hp = 100; player.x = 100; player.y = 200; player.vy = 0; }
+        document.getElementById("hpBar").style.width = player.hp + "%";
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!gameStarted) { requestAnimationFrame(draw); return; }
+
+        for (let key in world) {
+            const [col, row] = key.split(",").map(Number);
+            ctx.fillStyle = world[key];
+            ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+        }
+
+        ctx.fillStyle = "#FFD700";
+        ctx.fillRect(player.x, player.y, player.w, player.h);
+
+        let rolePrefix = (playerRole === "DEV") ? "[DEV] " : (playerRole === "MOD") ? "[MOD] " : "";
+        let roleColor = "white";
+        if (playerRole === "DEV") roleColor = `hsl(${rainbowHue}, 100%, 60%)`;
+        else if (playerRole === "MOD") roleColor = "#A020F0";
+
+        ctx.font = "bold 15px Arial";
+        ctx.textAlign = "center";
+        ctx.shadowColor = "black"; ctx.shadowBlur = 4;
+        ctx.fillStyle = roleColor;
+        ctx.fillText(rolePrefix + playerName, player.x + player.w / 2, player.y - 12);
+        ctx.shadowBlur = 0;
+
+        if (chatTimer > 0) {
+            ctx.font = "16px Arial";
+            const tw = ctx.measureText(currentMessage).width;
+            ctx.fillStyle = "white";
+            ctx.beginPath(); ctx.roundRect(player.x + player.w/2 - (tw+20)/2, player.y - 65, tw + 20, 30, 10); ctx.fill();
+            ctx.fillStyle = "black";
+            ctx.fillText(currentMessage, player.x + player.w/2, player.y - 45);
+        }
+
+        update();
+        requestAnimationFrame(draw);
+    }
+    draw();
+</script>
+</body>
+</html>
