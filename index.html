@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Command System</title>
+    <title>Sandbox Pro - Ghost Mode & Auto-Dirt</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: sans-serif; }
         canvas { display: block; }
@@ -20,7 +20,6 @@
             padding: 10px; border-radius: 5px; font-size: 14px; z-index: 100;
         }
 
-        /* CHAT BOX & COMMAND */
         #chatInput {
             position: absolute; bottom: 100px; left: 50%;
             transform: translateX(-50%);
@@ -43,13 +42,12 @@
 <body>
 
 <div class="ui-info">
-    <b>Tekan ENTER</b> untuk mengetik command!<br>
-    Coba: <span style="color: #00ff00;">/kill, /reset, /tp 500 100</span>
+    <b>Command Baru:</b> <span style="color: #00ff00;">/ghost</span> (Tembus blok & terbang)<br>
+    <b>Enter</b> untuk chat | <b>W/A/S/D</b> untuk gerak
 </div>
 
 <div class="hp-container"><div id="hpBar" class="hp-bar"></div></div>
-
-<input type="text" id="chatInput" placeholder="Ketik command di sini...">
+<input type="text" id="chatInput" placeholder="Ketik command /ghost, /kill, dll...">
 
 <div class="inventory-bar">
     <div id="slot1" class="slot active" style="background-color: #8B4513;">1</div>
@@ -70,19 +68,26 @@
     const tileSize = 40;
     let world = {};
     let isChatting = false;
+    let ghostMode = false;
     
-    // LOAD WORLD
+    // SISTEM LOAD & AUTO-DIRT
     function loadWorld() {
         const saved = localStorage.getItem("mySandboxWorld");
-        if (saved) world = JSON.parse(saved);
-        else resetToDefault();
+        if (saved) {
+            world = JSON.parse(saved);
+        } else {
+            resetToDefault();
+        }
     }
     
     function resetToDefault() {
         world = {};
+        // Buat Lantai Dasar
         for(let i = 0; i < Math.ceil(canvas.width/tileSize); i++) {
             world[`${i},${Math.floor(canvas.height/tileSize) - 1}`] = "#5d4037";
         }
+        // TAMBAHKAN DIRT DI AREA SPAWN (Auto-Dirt)
+        world["2,10"] = "#8B4513"; world["3,10"] = "#8B4513"; world["4,10"] = "#8B4513";
     }
     loadWorld();
 
@@ -93,7 +98,7 @@
     const blocks = { "1": "#8B4513", "2": "#808080", "3": "#228B22", "4": "#FF4500" };
 
     let player = {
-        x: 100, y: 100, w: 30, h: 38,
+        x: 120, y: 300, w: 30, h: 38,
         vx: 0, vy: 0, speed: 5,
         jumpPower: -12, gravity: 0.6, grounded: false,
         hp: 100, dmgCooldown: 0
@@ -101,16 +106,21 @@
 
     function getGridPos(x, y) { return { col: Math.floor(x / tileSize), row: Math.floor(y / tileSize) }; }
     function getBlockAt(px, py) {
+        if (ghostMode) return null; // Saat ghost mode, anggap tidak ada blok (tembus)
         let p = getGridPos(px, py);
         return world[`${p.col},${p.row}`];
     }
 
-    // --- SISTEM COMMAND ---
     function processCommand(cmd) {
         const parts = cmd.split(" ");
         const action = parts[0].toLowerCase();
 
         switch(action) {
+            case "/ghost":
+                ghostMode = !ghostMode;
+                alert("Ghost Mode: " + (ghostMode ? "ON" : "OFF"));
+                player.vy = 0;
+                break;
             case "/kill":
                 player.hp = 0;
                 break;
@@ -120,10 +130,6 @@
                     localStorage.setItem("mySandboxWorld", JSON.stringify(world));
                 }
                 break;
-            case "/save":
-                localStorage.setItem("mySandboxWorld", JSON.stringify(world));
-                alert("Game Tersimpan!");
-                break;
             case "/tp":
                 if(parts[1] && parts[2]) {
                     player.x = parseInt(parts[1]);
@@ -131,12 +137,9 @@
                     player.vy = 0;
                 }
                 break;
-            default:
-                alert("Command tidak dikenal!");
         }
     }
 
-    // Input Keyboard
     window.addEventListener("keydown", (e) => {
         if (e.code === "Enter") {
             if (!isChatting) {
@@ -144,18 +147,14 @@
                 chatInput.style.display = "block";
                 chatInput.focus();
             } else {
-                if (chatInput.value.startsWith("/")) {
-                    processCommand(chatInput.value);
-                }
+                if (chatInput.value.startsWith("/")) processCommand(chatInput.value);
                 chatInput.value = "";
                 chatInput.style.display = "none";
                 isChatting = false;
             }
             return;
         }
-
-        if (isChatting) return; // Jangan gerak kalau lagi ngetik
-
+        if (isChatting) return;
         keys[e.code] = true;
         if (blocks[e.key]) {
             selectedBlock = blocks[e.key];
@@ -183,52 +182,60 @@
         player.vx = 0;
         if (keys["KeyA"]) player.vx = -player.speed;
         if (keys["KeyD"]) player.vx = player.speed;
-        
-        let lastVy = player.vy;
-        player.vy += player.gravity;
 
-        player.x += player.vx;
-        if (getBlockAt(player.x, player.y+5) || getBlockAt(player.x+player.w, player.y+5) || 
-            getBlockAt(player.x, player.y+player.h-5) || getBlockAt(player.x+player.w, player.y+player.h-5)) {
-            player.x -= player.vx;
-        }
-
-        player.grounded = false;
-        player.y += player.vy;
-        let footerLeft = getBlockAt(player.x + 5, player.y + player.h);
-        let footerRight = getBlockAt(player.x + player.w - 5, player.y + player.h);
-
-        if (footerLeft || footerRight) {
-            if (lastVy > 15) player.hp -= Math.floor(lastVy * 2);
-            if ((footerLeft === "#FF4500" || footerRight === "#FF4500") && player.dmgCooldown <= 0) {
-                player.hp -= 10;
-                player.dmgCooldown = 30;
-            }
-            let p = getGridPos(player.x, player.y + player.h);
-            player.y = p.row * tileSize - player.h;
+        if (ghostMode) {
+            // Mode Terbang di Ghost Mode
             player.vy = 0;
-            player.grounded = true;
-        }
+            if (keys["KeyW"]) player.y -= player.speed;
+            if (keys["KeyS"]) player.y += player.speed;
+            player.x += player.vx;
+        } else {
+            // Mode Normal
+            let lastVy = player.vy;
+            player.vy += player.gravity;
 
-        if (keys["KeyW"] && player.grounded) {
-            player.vy = player.jumpPower;
+            player.x += player.vx;
+            if (getBlockAt(player.x, player.y+5) || getBlockAt(player.x+player.w, player.y+5) || 
+                getBlockAt(player.x, player.y+player.h-5) || getBlockAt(player.x+player.w, player.y+player.h-5)) {
+                player.x -= player.vx;
+            }
+
             player.grounded = false;
+            player.y += player.vy;
+            let footerLeft = getBlockAt(player.x + 5, player.y + player.h);
+            let footerRight = getBlockAt(player.x + player.w - 5, player.y + player.h);
+
+            if (footerLeft || footerRight) {
+                if (lastVy > 15) player.hp -= Math.floor(lastVy * 2);
+                if ((footerLeft === "#FF4500" || footerRight === "#FF4500") && player.dmgCooldown <= 0) {
+                    player.hp -= 10;
+                    player.dmgCooldown = 30;
+                }
+                let p = getGridPos(player.x, player.y + player.h);
+                player.y = p.row * tileSize - player.h;
+                player.vy = 0;
+                player.grounded = true;
+            }
+
+            if (keys["KeyW"] && player.grounded) {
+                player.vy = player.jumpPower;
+                player.grounded = false;
+            }
         }
 
         if (player.dmgCooldown > 0) player.dmgCooldown--;
         document.getElementById("hpBar").style.width = Math.max(0, player.hp) + "%";
 
         if (player.hp <= 0) {
-            player.hp = 100;
-            player.x = 100; player.y = 100;
-            player.vy = 0;
+            player.hp = 100; player.x = 120; player.y = 100; player.vy = 0;
         }
-
         clouds.forEach(c => { c.x -= c.s; if(c.x + c.w < 0) c.x = canvas.width; });
     }
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Matahari & Awan
         ctx.fillStyle = "#FFEB3B"; ctx.beginPath(); ctx.arc(canvas.width - 80, 80, 40, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = "white";
         clouds.forEach(c => { ctx.beginPath(); ctx.ellipse(c.x, c.y, c.w/2, 20, 0, 0, Math.PI*2); ctx.fill(); });
@@ -240,8 +247,11 @@
             ctx.strokeStyle = "rgba(0,0,0,0.3)"; ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
         }
 
+        // Karakter (Transparan kalau Ghost Mode)
+        ctx.globalAlpha = ghostMode ? 0.4 : 1.0;
         ctx.fillStyle = (player.dmgCooldown > 0) ? "white" : "#FFD700";
         ctx.fillRect(player.x, player.y, player.w, player.h);
+        ctx.globalAlpha = 1.0;
         
         update();
         requestAnimationFrame(draw);
