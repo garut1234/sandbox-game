@@ -1,59 +1,55 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Lava & Damage System</title>
+    <title>Sandbox Pro - Command System</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: sans-serif; }
         canvas { display: block; }
         
-        /* UI Darah (HP Bar) */
+        /* UI Darah */
         .hp-container {
             position: absolute; top: 10px; right: 20px;
             width: 200px; height: 25px; background: #333;
             border: 3px solid #000; border-radius: 15px; overflow: hidden; z-index: 100;
         }
-        .hp-bar {
-            width: 100%; height: 100%; background: #ff4444;
-            transition: width 0.2s ease;
-        }
+        .hp-bar { width: 100%; height: 100%; background: #ff4444; transition: width 0.2s; }
 
         .ui-info { 
             position: absolute; top: 10px; left: 10px; 
             background: rgba(0,0,0,0.7); color: white; 
-            padding: 10px; border-radius: 5px; pointer-events: none; 
-            font-size: 14px; z-index: 100;
+            padding: 10px; border-radius: 5px; font-size: 14px; z-index: 100;
         }
 
-        /* INVENTORY BAR - Sekarang ada 4 Slot */
+        /* CHAT BOX & COMMAND */
+        #chatInput {
+            position: absolute; bottom: 100px; left: 50%;
+            transform: translateX(-50%);
+            width: 300px; padding: 10px;
+            background: rgba(0,0,0,0.8); color: white;
+            border: 2px solid #00ff00; border-radius: 5px;
+            display: none; z-index: 2000;
+        }
+
         .inventory-bar { 
             position: absolute; bottom: 30px; left: 50%; 
-            transform: translateX(-50%); 
-            display: flex; background: #333; 
-            padding: 10px; border: 3px solid #000; 
+            transform: translateX(-50%); display: flex; 
+            background: #333; padding: 10px; border: 3px solid #000; 
             border-radius: 12px; z-index: 1000;
         }
-
-        .slot { 
-            width: 50px; height: 50px; margin: 0 8px; 
-            border: 3px solid #555; display: flex; 
-            justify-content: center; align-items: center; 
-            color: white; font-weight: bold; border-radius: 8px;
-        }
-
+        .slot { width: 50px; height: 50px; margin: 0 8px; border: 3px solid #555; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; border-radius: 8px; }
         .active { border-color: #00ff00; box-shadow: 0 0 15px #00ff00; transform: scale(1.1); }
     </style>
 </head>
 <body>
 
 <div class="ui-info">
-    <b>INFO:</b> Blok Oranye adalah <b>LAVA!</b><br>
-    Hati-hati jangan diinjak.<br>
-    <b>1, 2, 3, 4:</b> Pilih Blok | <b>W:</b> Lompat
+    <b>Tekan ENTER</b> untuk mengetik command!<br>
+    Coba: <span style="color: #00ff00;">/kill, /reset, /tp 500 100</span>
 </div>
 
-<div class="hp-container">
-    <div id="hpBar" class="hp-bar"></div>
-</div>
+<div class="hp-container"><div id="hpBar" class="hp-bar"></div></div>
+
+<input type="text" id="chatInput" placeholder="Ketik command di sini...">
 
 <div class="inventory-bar">
     <div id="slot1" class="slot active" style="background-color: #8B4513;">1</div>
@@ -67,33 +63,34 @@
 <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
+    const chatInput = document.getElementById("chatInput");
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
     const tileSize = 40;
     let world = {};
+    let isChatting = false;
     
     // LOAD WORLD
-    const savedWorld = localStorage.getItem("mySandboxWorld");
-    if (savedWorld) {
-        world = JSON.parse(savedWorld);
-    } else {
+    function loadWorld() {
+        const saved = localStorage.getItem("mySandboxWorld");
+        if (saved) world = JSON.parse(saved);
+        else resetToDefault();
+    }
+    
+    function resetToDefault() {
+        world = {};
         for(let i = 0; i < Math.ceil(canvas.width/tileSize); i++) {
             world[`${i},${Math.floor(canvas.height/tileSize) - 1}`] = "#5d4037";
         }
     }
+    loadWorld();
 
     let clouds = [];
     for(let i=0; i<5; i++) clouds.push({x: Math.random()*canvas.width, y: Math.random()*(canvas.height/2), s: 0.2+Math.random()*0.5, w: 100+Math.random()*100});
 
-    // INVENTORY DATA
     let selectedBlock = "#8B4513"; 
-    const blocks = { 
-        "1": "#8B4513", // Tanah
-        "2": "#808080", // Batu
-        "3": "#228B22", // Daun
-        "4": "#FF4500"  // LAVA (Oranye Merah)
-    };
+    const blocks = { "1": "#8B4513", "2": "#808080", "3": "#228B22", "4": "#FF4500" };
 
     let player = {
         x: 100, y: 100, w: 30, h: 38,
@@ -103,22 +100,62 @@
     };
 
     function getGridPos(x, y) { return { col: Math.floor(x / tileSize), row: Math.floor(y / tileSize) }; }
-    
-    // Cek apakah ada blok di koordinat pixel tertentu
     function getBlockAt(px, py) {
         let p = getGridPos(px, py);
         return world[`${p.col},${p.row}`];
     }
 
-    canvas.addEventListener("mousedown", (e) => {
-        const pos = getGridPos(e.clientX, e.clientY);
-        const key = `${pos.col},${pos.row}`;
-        if (e.button === 0) world[key] = selectedBlock; 
-        else if (e.button === 2) delete world[key];
-        localStorage.setItem("mySandboxWorld", JSON.stringify(world));
-    });
+    // --- SISTEM COMMAND ---
+    function processCommand(cmd) {
+        const parts = cmd.split(" ");
+        const action = parts[0].toLowerCase();
 
+        switch(action) {
+            case "/kill":
+                player.hp = 0;
+                break;
+            case "/reset":
+                if(confirm("Hapus semua blok?")) {
+                    resetToDefault();
+                    localStorage.setItem("mySandboxWorld", JSON.stringify(world));
+                }
+                break;
+            case "/save":
+                localStorage.setItem("mySandboxWorld", JSON.stringify(world));
+                alert("Game Tersimpan!");
+                break;
+            case "/tp":
+                if(parts[1] && parts[2]) {
+                    player.x = parseInt(parts[1]);
+                    player.y = parseInt(parts[2]);
+                    player.vy = 0;
+                }
+                break;
+            default:
+                alert("Command tidak dikenal!");
+        }
+    }
+
+    // Input Keyboard
     window.addEventListener("keydown", (e) => {
+        if (e.code === "Enter") {
+            if (!isChatting) {
+                isChatting = true;
+                chatInput.style.display = "block";
+                chatInput.focus();
+            } else {
+                if (chatInput.value.startsWith("/")) {
+                    processCommand(chatInput.value);
+                }
+                chatInput.value = "";
+                chatInput.style.display = "none";
+                isChatting = false;
+            }
+            return;
+        }
+
+        if (isChatting) return; // Jangan gerak kalau lagi ngetik
+
         keys[e.code] = true;
         if (blocks[e.key]) {
             selectedBlock = blocks[e.key];
@@ -127,11 +164,22 @@
         }
     });
 
+    canvas.addEventListener("mousedown", (e) => {
+        if (isChatting) return;
+        const pos = getGridPos(e.clientX, e.clientY);
+        const key = `${pos.col},${pos.row}`;
+        if (e.button === 0) world[key] = selectedBlock; 
+        else if (e.button === 2) delete world[key];
+        localStorage.setItem("mySandboxWorld", JSON.stringify(world));
+    });
+
     canvas.oncontextmenu = (e) => e.preventDefault();
     let keys = {};
     window.onkeyup = (e) => keys[e.code] = false;
 
     function update() {
+        if (isChatting) return;
+
         player.vx = 0;
         if (keys["KeyA"]) player.vx = -player.speed;
         if (keys["KeyD"]) player.vx = player.speed;
@@ -139,32 +187,23 @@
         let lastVy = player.vy;
         player.vy += player.gravity;
 
-        // Gerak X & Tabrakan
         player.x += player.vx;
         if (getBlockAt(player.x, player.y+5) || getBlockAt(player.x+player.w, player.y+5) || 
             getBlockAt(player.x, player.y+player.h-5) || getBlockAt(player.x+player.w, player.y+player.h-5)) {
             player.x -= player.vx;
         }
 
-        // Gerak Y & Tabrakan
         player.grounded = false;
         player.y += player.vy;
-        
         let footerLeft = getBlockAt(player.x + 5, player.y + player.h);
         let footerRight = getBlockAt(player.x + player.w - 5, player.y + player.h);
 
         if (footerLeft || footerRight) {
-            // FALL DAMAGE
-            if (lastVy > 15) { 
-                player.hp -= Math.floor(lastVy * 2);
-            }
-            
-            // LAVA DAMAGE (Jika blok yang diinjak berwarna Oranye)
+            if (lastVy > 15) player.hp -= Math.floor(lastVy * 2);
             if ((footerLeft === "#FF4500" || footerRight === "#FF4500") && player.dmgCooldown <= 0) {
                 player.hp -= 10;
-                player.dmgCooldown = 30; // Jeda damage agar tidak langsung mati
+                player.dmgCooldown = 30;
             }
-
             let p = getGridPos(player.x, player.y + player.h);
             player.y = p.row * tileSize - player.h;
             player.vy = 0;
@@ -176,16 +215,13 @@
             player.grounded = false;
         }
 
-        // Cooldown damage
         if (player.dmgCooldown > 0) player.dmgCooldown--;
-
-        // Update HP Bar
         document.getElementById("hpBar").style.width = Math.max(0, player.hp) + "%";
 
-        // Mati & Respawn
         if (player.hp <= 0) {
             player.hp = 100;
             player.x = 100; player.y = 100;
+            player.vy = 0;
         }
 
         clouds.forEach(c => { c.x -= c.s; if(c.x + c.w < 0) c.x = canvas.width; });
@@ -193,35 +229,20 @@
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Matahari & Awan
         ctx.fillStyle = "#FFEB3B"; ctx.beginPath(); ctx.arc(canvas.width - 80, 80, 40, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = "white";
         clouds.forEach(c => { ctx.beginPath(); ctx.ellipse(c.x, c.y, c.w/2, 20, 0, 0, Math.PI*2); ctx.fill(); });
 
-        // BLOK DUNIA
         for (let key in world) {
             const [col, row] = key.split(",").map(Number);
             ctx.fillStyle = world[key];
             ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
-            
-            // Efek lava berdenyut (opsional)
-            if (world[key] === "#FF4500") {
-                ctx.fillStyle = "rgba(255,255,255,0.2)";
-                ctx.fillRect(col * tileSize, row * tileSize, tileSize, 5);
-            }
-            
-            ctx.strokeStyle = "rgba(0,0,0,0.3)"; 
-            ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
+            ctx.strokeStyle = "rgba(0,0,0,0.3)"; ctx.strokeRect(col * tileSize, row * tileSize, tileSize, tileSize);
         }
 
-        // KARAKTER
-        ctx.fillStyle = (player.dmgCooldown > 0) ? "white" : "#FFD700"; // Berkedip putih kalau kena lava
+        ctx.fillStyle = (player.dmgCooldown > 0) ? "white" : "#FFD700";
         ctx.fillRect(player.x, player.y, player.w, player.h);
-        ctx.fillStyle = "black";
-        let eyeX = player.vx >= 0 ? player.x + 20 : player.x + 5;
-        ctx.fillRect(eyeX, player.y + 10, 6, 6);
-
+        
         update();
         requestAnimationFrame(draw);
     }
