@@ -1,51 +1,56 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox - Breaworlds Style</title>
+    <title>Breaworlds - Staff & Dev Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Arial', sans-serif; }
-        canvas { display: block; cursor: crosshair; }
+        canvas { display: block; }
 
-        /* CHAT LOG DI ATAS */
+        /* TOP UI - CHAT & GLOBAL */
         #topChatContainer { position: fixed; top: 0; left: 0; width: 100%; display: none; flex-direction: column; z-index: 4500; }
-        #globalBar { width: 100%; padding: 10px 0; background: rgba(255, 69, 0, 0.9); color: white; font-weight: bold; text-align: center; border-bottom: 2px solid #ff0000; }
-        #chatBox { width: 100%; max-height: 120px; background: rgba(0, 0, 0, 0.5); color: white; overflow-y: auto; padding: 5px 0; text-align: center; }
-        .chat-line { margin-bottom: 3px; font-size: 13px; }
+        #globalBar { width: 100%; padding: 12px 0; background: rgba(255, 69, 0, 0.95); color: white; font-weight: bold; text-align: center; border-bottom: 3px solid #ff0000; font-size: 16px; }
+        #chatBox { width: 100%; max-height: 150px; background: rgba(0, 0, 0, 0.6); color: white; overflow-y: auto; padding: 5px 0; text-align: center; }
+        .chat-line { margin-bottom: 4px; text-shadow: 1px 1px 2px black; font-size: 14px; }
 
-        /* INPUT CHAT CENTER */
-        #chatInput { position: fixed; top: 180px; left: 50%; transform: translateX(-50%); width: 400px; padding: 12px; background: rgba(0,0,0,0.9); color: white; border: 2px solid #00ff00; border-radius: 20px; display: none; z-index: 4600; outline: none; text-align: center; }
+        /* INPUT BOX */
+        #chatInput { position: fixed; top: 200px; left: 50%; transform: translateX(-50%); width: 450px; padding: 15px; background: rgba(0,0,0,0.9); color: white; border: 2px solid #00ff00; border-radius: 30px; display: none; z-index: 4600; outline: none; text-align: center; }
 
         /* HOTBAR */
-        #hotbar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; background: rgba(0, 0, 0, 0.7); padding: 8px; border-radius: 12px; border: 2px solid #444; z-index: 2000; gap: 8px; }
-        .slot { width: 50px; height: 50px; background: #333; border: 2px solid #666; border-radius: 8px; display: flex; justify-content: center; align-items: center; color: white; font-size: 9px; position: relative; }
-        .slot.active { border-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
+        #hotbar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; background: rgba(0, 0, 0, 0.8); padding: 10px; border-radius: 15px; border: 3px solid #444; z-index: 2000; gap: 10px; }
+        .slot { width: 60px; height: 60px; background: #333; border: 2px solid #666; border-radius: 10px; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; font-size: 11px; position: relative; }
+        .slot.active { border-color: #00ff00; background: #444; box-shadow: 0 0 15px #00ff00; transform: scale(1.1); }
 
-        /* LOGIN */
+        /* LOGIN SCREEN */
         #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; display: flex; justify-content: center; align-items: center; z-index: 5000; color: white; }
-        .login-box { text-align: center; background: #222; padding: 40px; border-radius: 20px; border: 2px solid #00ff00; }
+        .login-box { text-align: center; background: #222; padding: 50px; border-radius: 25px; border: 2px solid #ff0000; }
+        
+        /* NUKE EFFECT */
+        #nukeOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; display: none; z-index: 9999; pointer-events: none; }
     </style>
 </head>
 <body oncontextmenu="return false;">
 
+<div id="nukeOverlay"></div>
+
 <div id="loginScreen">
     <div class="login-box">
-        <h2 style="color: #00ff00;">BREAWORLDS SANDBOX</h2>
-        <input type="text" id="nameInput" placeholder="Nama Player..." maxlength="12" style="padding:10px; text-align:center; border-radius:5px; border:none;">
-        <br><button id="startBtn" style="margin-top:15px; padding:10px 30px; background:#00ff00; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">LOGIN</button>
+        <h1 style="color: #ff0000;">BREAWORLDS STAFF</h1>
+        <input type="text" id="nameInput" placeholder="Username..." maxlength="15" style="padding:10px; text-align:center;">
+        <br><button id="startBtn" style="margin-top:20px; padding:10px 40px; background:#ff0000; color:white; border:none; border-radius:8px; cursor:pointer;">ENTER</button>
     </div>
 </div>
 
 <div id="topChatContainer">
-    <div id="globalBar">WELCOME TO THE WORLD</div>
+    <div id="globalBar">SYSTEM STATUS: ONLINE</div>
     <div id="chatBox"></div>
 </div>
 
-<input type="text" id="chatInput" placeholder="Press Enter to talk...">
+<input type="text" id="chatInput" placeholder="Ketik /help untuk command...">
 
 <div id="hotbar">
-    <div class="slot active" data-key="1" id="slot-1">DIRT</div>
-    <div class="slot" data-key="2" id="slot-2">STONE</div>
-    <div class="slot" data-key="3" id="slot-3">WOOD</div>
+    <div class="slot active" data-key="1" id="slot-1">WRENCH</div>
+    <div class="slot" data-key="2" id="slot-2">DIRT</div>
+    <div class="slot" data-key="3" id="slot-3">STONE</div>
     <div class="slot" data-key="4" id="slot-4">TNT</div>
     <div class="slot" data-key="5" id="slot-5">LAVA</div>
 </div>
@@ -63,20 +68,18 @@
     let playerName = "";
     let playerRole = localStorage.getItem("playerRole") || "PLAYER";
     let isMuted = false;
-    let hue = 0;
+    let ghostMode = false;
     let walkAnim = 0;
+    let hue = 0;
     let keys = {};
-    
-    // Player object
-    let player = { x: 400, y: 100, w: 30, h: 55, vy: 0, speed: 5 };
-    
-    // CHAT BUBBLE SYSTEM
+    let player = { x: 300, y: 100, w: 30, h: 55, vy: 0, speed: 5 };
     let activeBubble = { text: "", timer: 0 };
 
     document.getElementById("startBtn").onclick = () => {
-        playerName = document.getElementById("nameInput").value || "Guest";
+        playerName = document.getElementById("nameInput").value || "Player";
         document.getElementById("loginScreen").style.display = "none";
         gameStarted = true;
+        addLog("System", "Welcome to Breaworlds. Type /help for commands.", "#aaa");
     };
 
     function addLog(sender, msg, color = "white") {
@@ -88,107 +91,112 @@
         chatBox.scrollTop = chatBox.scrollHeight;
         topContainer.style.display = "flex";
 
-        // Tampilkan Chat Bubble jika bukan command system
         if(sender.toLowerCase() === playerName.toLowerCase()) {
             activeBubble.text = msg;
-            activeBubble.timer = 240; // durasi bubble (frame)
+            activeBubble.timer = 180;
         }
 
         clearTimeout(window.chatT);
         if(chatInput.style.display === "none") {
-            window.chatT = setTimeout(() => { if(chatInput.style.display === "none") topContainer.style.display = "none"; }, 5000);
+            window.chatT = setTimeout(() => { if(chatInput.style.display === "none") topContainer.style.display = "none"; }, 6000);
         }
     }
 
     function handleCommand(input) {
-        if(isMuted) return addLog("System", "You are muted!", "red");
+        if(isMuted) return addLog("System", "You are muted and cannot talk.", "red");
+        
         const args = input.split(" ");
         const cmd = args[0].toLowerCase();
-        const isAdmin = (playerRole === "DEV" || playerRole === "MOD");
+        const isStaff = (playerRole === "MOD" || playerRole === "DEV");
+        const isDev = (playerRole === "DEV");
 
+        // HIDDEN DEV ACCESS
         if(input === "/iamdeveloper block") {
             playerRole = "DEV"; localStorage.setItem("playerRole", "DEV");
-            return addLog("System", "Akses Developer Aktif!", "cyan");
+            return addLog("System", "DEVELOPER ROLE ACTIVATED!", "cyan");
         }
 
         switch(cmd) {
+            case "/help":
+                addLog("Help", "Player: /kill, /rules | Staff: /say, /mute, /kick | Dev: /nuke, /setrole, /ghost", "lime");
+                break;
+            case "/rules":
+                addLog("Rules", "1. No Spam | 2. Respect Staff | 3. No Cheating", "yellow");
+                break;
+            case "/kill":
+                player.x = 300; player.y = 100; addLog("System", "You committed suicide.", "red");
+                break;
+            // STAFF COMMANDS
+            case "/say":
+                if(!isStaff) return addLog("System", "Unknown command.", "red");
+                document.getElementById("globalBar").innerText = "STAFF: " + args.slice(1).join(" ");
+                break;
+            case "/mute":
+                if(!isStaff) return addLog("System", "Unknown command.", "red");
+                isMuted = true; addLog("System", "You have been muted by staff.", "orange");
+                break;
+            case "/unmute":
+                if(!isStaff) return addLog("System", "Unknown command.", "red");
+                isMuted = false; addLog("System", "Mute lifted.", "lime");
+                break;
+            case "/kick":
+                if(!isStaff) return addLog("System", "Unknown command.", "red");
+                addLog("System", "Kicking player...", "red");
+                setTimeout(() => location.reload(), 1500);
+                break;
+            // DEV COMMANDS
             case "/nuke":
-                if(!isAdmin) return addLog("System", "Admin only!", "red");
-                addLog("GLOBAL", "NUCLEAR LAUNCHED!", "orange");
+                if(!isDev) return addLog("System", "Unknown command.", "red");
+                const overlay = document.getElementById("nukeOverlay");
+                overlay.style.display = "block";
+                setTimeout(() => overlay.style.display = "none", 500);
+                addLog("GLOBAL", "THE WORLD HAS BEEN NUKED BY DEVELOPER!", "red");
                 break;
-            case "/muteplayer":
-                if(!isAdmin) return addLog("System", "Admin only!", "red");
-                isMuted = true; addLog("System", "You have been muted.", "red");
+            case "/ghost":
+                if(!isDev) return addLog("System", "Unknown command.", "red");
+                ghostMode = !ghostMode;
+                addLog("System", "Ghost Mode: " + ghostMode, "cyan");
                 break;
-            case "/gm":
-                if(!isAdmin) return addLog("System", "Admin only!", "red");
-                document.getElementById("globalBar").innerText = "GLOBAL: " + args.slice(1).join(" ");
+            case "/setrole":
+                if(!isDev) return addLog("System", "Unknown command.", "red");
+                if(!args[1]) return addLog("System", "Usage: /setrole [PLAYER/MOD/DEV]", "white");
+                playerRole = args[1].toUpperCase();
+                localStorage.setItem("playerRole", playerRole);
+                addLog("System", "Role updated to " + playerRole, "cyan");
                 break;
             default:
-                addLog(playerName, input, (playerRole === "DEV" ? "cyan" : "white"));
+                addLog(playerName, input, (isDev ? "cyan" : (isStaff ? "orange" : "white")));
         }
-    }
-
-    function drawBubble(x, y, text) {
-        if (!text || activeBubble.timer <= 0) return;
-        
-        ctx.font = "14px Arial";
-        let textWidth = ctx.measureText(text).width;
-        let padding = 10;
-        let bW = textWidth + padding * 2;
-        let bH = 30;
-        let bX = x + 15 - bW / 2;
-        let bY = y - 55;
-
-        // Draw Bubble Background
-        ctx.fillStyle = "white";
-        ctx.beginPath();
-        ctx.roundRect(bX, bY, bW, bH, 8);
-        ctx.fill();
-
-        // Draw Arrow
-        ctx.beginPath();
-        ctx.moveTo(x + 10, bY + bH);
-        ctx.lineTo(x + 15, bY + bH + 8);
-        ctx.lineTo(x + 20, bY + bH);
-        ctx.fill();
-
-        // Draw Text
-        ctx.fillStyle = "black";
-        ctx.textAlign = "center";
-        ctx.fillText(text, x + 15, bY + 20);
-        
-        activeBubble.timer--;
     }
 
     function drawHuman(x, y) {
         ctx.save();
         ctx.translate(x, y);
-
-        let colorRole = (playerRole === "DEV") ? `hsl(${hue}, 100%, 50%)` : "#FFD700";
+        let color = (playerRole === "DEV") ? `hsl(${hue}, 100%, 50%)` : (playerRole === "MOD" ? "orange" : "#FFD700");
         if(playerRole === "DEV") hue = (hue + 2) % 360;
 
-        // Kaki
-        let legW = Math.sin(walkAnim) * 8;
-        ctx.fillStyle = "#333";
-        ctx.fillRect(5, 35, 8, 15 + legW);  ctx.fillRect(17, 35, 8, 15 - legW);
-
-        // Badan
-        ctx.fillStyle = (playerRole === "DEV") ? colorRole : "#2222ff";
+        ctx.globalAlpha = ghostMode ? 0.4 : 1.0;
+        let leg = Math.sin(walkAnim) * 8;
+        ctx.fillStyle = "#333"; ctx.fillRect(5, 35, 8, 15 + leg); ctx.fillRect(17, 35, 8, 15 - leg);
+        ctx.fillStyle = (playerRole === "DEV") ? color : (playerRole === "MOD" ? "orange" : "#2222ff");
         ctx.fillRect(0, 15, 30, 25);
-
-        // Kepala & Tangan
-        ctx.fillStyle = "#FFCC99";
-        ctx.fillRect(-5, 18, 5, 12); ctx.fillRect(30, 18, 5, 12); // Tangan
-        ctx.fillRect(5, 0, 20, 18); // Muka
-        
-        ctx.fillStyle = "black";
-        ctx.fillRect(9, 6, 3, 3); ctx.fillRect(18, 6, 3, 3); // Mata
-
+        ctx.fillStyle = "#FFCC99"; ctx.fillRect(-5, 18, 5, 12); ctx.fillRect(30, 18, 5, 12); ctx.fillRect(5, 0, 20, 18);
+        ctx.fillStyle = "black"; ctx.fillRect(9, 6, 3, 3); ctx.fillRect(18, 6, 3, 3);
         ctx.restore();
-        ctx.fillStyle = (playerRole === "DEV") ? colorRole : "white";
-        ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
-        ctx.fillText(`${playerName}`, x + 15, y - 8);
+
+        ctx.fillStyle = color; ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
+        ctx.fillText(`[${playerRole}] ${playerName}`, x + 15, y - 10);
+    }
+
+    function drawBubble(x, y, text) {
+        if (!text || activeBubble.timer <= 0) return;
+        ctx.font = "14px Arial";
+        let tw = ctx.measureText(text).width;
+        ctx.fillStyle = "white";
+        ctx.beginPath(); ctx.roundRect(x + 15 - (tw+20)/2, y - 60, tw + 20, 30, 10); ctx.fill();
+        ctx.fillStyle = "black"; ctx.textAlign = "center";
+        ctx.fillText(text, x + 15, y - 40);
+        activeBubble.timer--;
     }
 
     window.onkeydown = (e) => {
@@ -211,34 +219,29 @@
     };
     window.onkeyup = (e) => keys[e.code] = false;
 
-    function update() {
-        if(!gameStarted || chatInput.style.display === "block") return;
-        let isMoving = false;
-        if(keys["KeyA"]) { player.x -= player.speed; isMoving = true; }
-        if(keys["KeyD"]) { player.x += player.speed; isMoving = true; }
-        if(isMoving) walkAnim += 0.25; else walkAnim = 0;
-
-        player.vy += 0.6; player.y += player.vy;
-        if(player.y > canvas.height - 155) {
-            player.y = canvas.height - 155; player.vy = 0;
-            if(keys["KeyW"]) player.vy = -12;
-        }
-    }
-
     function draw() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         if(!gameStarted) { requestAnimationFrame(draw); return; }
-        update();
+        
+        let moving = false;
+        if(chatInput.style.display === "none") {
+            if(keys["KeyA"]) { player.x -= player.speed; moving = true; }
+            if(keys["KeyD"]) { player.x += player.speed; moving = true; }
+            if(moving) walkAnim += 0.2; else walkAnim = 0;
+            if(ghostMode) {
+                if(keys["KeyW"]) player.y -= player.speed;
+                if(keys["KeyS"]) player.y += player.speed;
+            } else {
+                player.vy += 0.6; player.y += player.vy;
+                if(player.y > canvas.height - 150) { player.y = canvas.height - 150; player.vy = 0; if(keys["KeyW"]) player.vy = -12; }
+            }
+        }
 
-        // Lantai
         ctx.fillStyle = "#8B4513"; ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
-
         drawHuman(player.x, player.y);
         drawBubble(player.x, player.y, activeBubble.text);
-
         requestAnimationFrame(draw);
     }
-
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     draw();
 </script>
