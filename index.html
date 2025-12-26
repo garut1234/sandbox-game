@@ -1,70 +1,87 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox - Pro Commands & RGB</title>
+    <title>Sandbox Pro - Persistent Inventory</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; }
         canvas { display: block; }
 
-        /* CHAT LOG BOX */
-        #chatBox {
-            position: fixed; bottom: 180px; left: 20px; width: 380px; height: 200px;
-            background: rgba(0, 0, 0, 0.6); border-radius: 12px; padding: 12px;
-            color: white; overflow-y: auto; display: none; z-index: 3500;
-            font-size: 14px; border: 1px solid rgba(255,255,255,0.2);
-            scrollbar-width: thin;
+        /* TOP CHAT SYSTEM - Muncul saat chat/ada pesan */
+        #topChatContainer {
+            position: fixed; top: 0; left: 0; width: 100%;
+            display: none; flex-direction: column; z-index: 4500;
         }
-        .chat-line { margin-bottom: 5px; word-wrap: break-word; text-shadow: 1px 1px 1px black; }
+        #globalBar {
+            width: 100%; padding: 12px 0; background: rgba(255, 165, 0, 0.95);
+            color: #000; font-weight: bold; text-align: center; 
+            border-bottom: 2px solid #ffd700; font-size: 16px;
+        }
+        #chatBox {
+            width: 100%; max-height: 120px; background: rgba(0, 0, 0, 0.5);
+            color: white; overflow-y: auto; padding: 5px 0;
+            font-size: 14px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2);
+            scrollbar-width: none;
+        }
+        #chatBox::-webkit-scrollbar { display: none; }
+        .chat-line { margin-bottom: 4px; text-shadow: 1px 1px 2px black; }
 
-        /* HOTBAR (INVENTORY) */
+        /* INPUT CHAT CENTER */
+        #chatInput {
+            position: fixed; top: 180px; left: 50%; transform: translateX(-50%);
+            width: 400px; padding: 12px; background: rgba(0,0,0,0.85); 
+            color: white; border: 2px solid #00ff00; border-radius: 25px;
+            display: none; z-index: 4600; outline: none; text-align: center;
+        }
+
+        /* INVENTORY / HOTBAR - SEKARANG DISPLAY: FLEX (SELALU MUNCUL) */
         #hotbar {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            display: none; background: rgba(0, 0, 0, 0.8); padding: 10px;
-            border-radius: 15px; border: 3px solid #333; z-index: 2000;
-            flex-direction: row; gap: 10px;
+            display: flex; background: rgba(0, 0, 0, 0.7); padding: 10px;
+            border-radius: 15px; border: 3px solid #444; z-index: 2000;
+            flex-direction: row; gap: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }
         .slot {
-            width: 50px; height: 50px; background: #555; border: 2px solid #777;
-            display: flex; justify-content: center; align-items: center;
-            border-radius: 8px; color: white; font-weight: bold;
+            width: 55px; height: 55px; background: #333; border: 2px solid #666;
+            border-radius: 10px; display: flex; justify-content: center; 
+            align-items: center; color: #fff; font-weight: bold; font-size: 10px;
+            position: relative; cursor: pointer; transition: 0.2s;
         }
-        .active { border-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
+        .slot.active { border-color: #00ff00; background: #444; box-shadow: 0 0 10px #00ff00; transform: scale(1.1); }
+        .slot::after { content: attr(data-key); position: absolute; top: 2px; left: 5px; font-size: 12px; color: #00ff00; }
 
-        /* INPUT CHAT */
-        #chatInput {
-            position: fixed; bottom: 130px; left: 20px; width: 380px; padding: 12px;
-            background: rgba(0,0,0,0.8); color: white; border: 2px solid #00ff00;
-            border-radius: 10px; display: none; z-index: 4000; outline: none;
-        }
-
-        /* LOGIN SCREEN */
+        /* LOGIN */
         #loginScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #1a1a1a; display: flex; justify-content: center; align-items: center; z-index: 5000; color: white;
+            background: #111; display: flex; justify-content: center; align-items: center; z-index: 5000; color: white;
         }
-        .login-box { text-align: center; background: #333; padding: 40px; border-radius: 20px; }
-        input#nameInput { padding: 12px; width: 250px; border-radius: 8px; border: none; text-align: center; }
-        button#startBtn { padding: 12px 40px; margin-top: 15px; background: #00ff00; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .login-box { text-align: center; background: #222; padding: 40px; border-radius: 25px; border: 2px solid #00ff00; }
+        input#nameInput { padding: 12px; width: 250px; border-radius: 8px; border: none; text-align: center; outline: none; font-size: 16px; }
+        button#startBtn { padding: 12px 40px; margin-top: 20px; background: #00ff00; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="loginScreen">
     <div class="login-box">
-        <h1>SANDBOX GAME</h1>
-        <input type="text" id="nameInput" placeholder="Masukkan Nama..." maxlength="15">
-        <br><button id="startBtn">PLAY</button>
+        <h1 style="color: #00ff00; letter-spacing: 2px;">SANDBOX PRO</h1>
+        <input type="text" id="nameInput" placeholder="Siapa namamu?" maxlength="15">
+        <br><button id="startBtn">MASUK DUNIA</button>
     </div>
 </div>
 
-<div id="chatBox"></div>
-<input type="text" id="chatInput" placeholder="Ketik command atau chat...">
+<div id="topChatContainer">
+    <div id="globalBar">DUNIA ONLINE</div>
+    <div id="chatBox"></div>
+</div>
+
+<input type="text" id="chatInput" placeholder="Ketik pesan atau /cmd...">
 
 <div id="hotbar">
-    <div class="slot active">1</div>
-    <div class="slot">2</div>
-    <div class="slot">3</div>
-    <div class="slot">4</div>
+    <div class="slot active" data-key="1">BRICK</div>
+    <div class="slot" data-key="2">DIRT</div>
+    <div class="slot" data-key="3">GRASS</div>
+    <div class="slot" data-key="4">WOOD</div>
+    <div class="slot" data-key="5">LEAF</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -74,7 +91,8 @@
     const ctx = canvas.getContext("2d");
     const chatInput = document.getElementById("chatInput");
     const chatBox = document.getElementById("chatBox");
-    const hotbar = document.getElementById("hotbar");
+    const globalBar = document.getElementById("globalBar");
+    const topContainer = document.getElementById("topChatContainer");
 
     let gameStarted = false;
     let playerName = "";
@@ -82,12 +100,15 @@
     let hue = 0; 
     let ghostMode = false;
     let keys = {};
-    let player = { x: 100, y: 100, w: 30, h: 40, vy: 0, speed: 5 };
+    let player = { x: 100, y: 100, w: 30, h: 40, vy: 0, speed: 5, jumpPower: -12 };
 
     document.getElementById("startBtn").onclick = () => {
-        playerName = document.getElementById("nameInput").value.trim() || "Player";
+        const inputName = document.getElementById("nameInput").value.trim();
+        if(!inputName) return;
+        playerName = inputName;
         document.getElementById("loginScreen").style.display = "none";
         gameStarted = true;
+        addLog("Server", `Selamat datang ${playerName}!`, "#00ff00");
     };
 
     function addLog(sender, msg, color = "white") {
@@ -97,14 +118,30 @@
         div.innerHTML = `<strong>${sender}:</strong> ${msg}`;
         chatBox.appendChild(div);
         chatBox.scrollTop = chatBox.scrollHeight;
+        
+        topContainer.style.display = "flex";
+        // Jika tidak sedang mengetik, sembunyikan chat atas setelah 7 detik
+        if(chatInput.style.display === "none") {
+            clearTimeout(window.chatTimeout);
+            window.chatTimeout = setTimeout(() => { 
+                if(chatInput.style.display === "none") topContainer.style.display = "none"; 
+            }, 7000);
+        }
     }
 
-    function toggleUI(show) {
-        const s = show ? "block" : "none";
-        chatBox.style.display = s;
-        chatInput.style.display = s;
-        hotbar.style.display = show ? "flex" : "none";
-        if(show) chatInput.focus();
+    function toggleChat(show) {
+        if(show) {
+            topContainer.style.display = "flex";
+            chatInput.style.display = "block";
+            chatInput.focus();
+        } else {
+            chatInput.style.display = "none";
+            // Chat box tetap muncul sebentar lalu hilang lewat timer di addLog
+            clearTimeout(window.chatTimeout);
+            window.chatTimeout = setTimeout(() => { 
+                if(chatInput.style.display === "none") topContainer.style.display = "none"; 
+            }, 5000);
+        }
     }
 
     function handleCommand(input) {
@@ -112,62 +149,46 @@
         const cmd = args[0].toLowerCase();
         const isAdmin = (playerRole === "DEV" || playerRole === "MOD");
 
-        // 1. RECOVERY DEV (RGB)
         if(input === "/iamdeveloper block") {
             playerRole = "DEV";
             localStorage.setItem("playerRole", "DEV");
-            addLog("System", "Developer RGB Mode Aktif!", "cyan");
+            addLog("System", "Akses Developer RGB Aktif!", "#00ffff");
             return;
         }
 
         switch(cmd) {
+            case "/gm":
+                if(!isAdmin) return addLog("System", "Akses Ditolak!", "red");
+                globalBar.innerText = "GLOBAL: " + args.slice(1).join(" ");
+                addLog("GLOBAL", args.slice(1).join(" "), "#ffd700");
+                break;
+            case "/name":
+                if(!isAdmin) return addLog("System", "Akses Ditolak!", "red");
+                playerName = args.slice(1).join(" ");
+                addLog("System", "Nama berubah.", "lime");
+                break;
             case "/ghost":
-                if(!isAdmin) return addLog("System", "Hanya Admin!", "red");
+                if(!isAdmin) return addLog("System", "Akses Ditolak!", "red");
                 ghostMode = !ghostMode;
                 addLog("System", "Ghost Mode: " + (ghostMode ? "ON" : "OFF"), "yellow");
                 break;
-
-            case "/setrole":
-                if(playerRole !== "DEV") return addLog("System", "Hanya DEV!", "red");
-                if(!args[1]) return addLog("System", "Gunakan /setrole [ROLE]", "red");
-                playerRole = args[1].toUpperCase();
-                localStorage.setItem("playerRole", playerRole);
-                addLog("System", "Role diganti ke " + playerRole, "lime");
-                break;
-
-            case "/name":
-                if(!args[1]) return addLog("System", "Gunakan /name [NAMA BARU]", "red");
-                playerName = args.slice(1).join(" ");
-                addLog("System", "Nama diganti jadi: " + playerName, "lime");
-                break;
-
             case "/kill":
-                player.x = 100; player.y = 100;
-                addLog("System", "Karakter di-respawn.", "red");
+                player.x = 100; player.y = 100; player.vy = 0;
+                addLog("System", "Respawned.", "red");
                 break;
-
-            case "/reset":
-                localStorage.clear();
-                location.reload();
-                break;
-
-            case "/?":
-                addLog("Help", "/ghost, /setrole, /name, /kill, /reset, /iamdeveloper block", "#00ff00");
-                break;
-
             default:
-                addLog(playerName, input, (playerRole === "DEV" ? "cyan" : "white"));
+                addLog(playerName, input, (playerRole === "DEV" ? "#00ffff" : "white"));
         }
     }
 
     window.onkeydown = (e) => {
         if(!gameStarted) return;
         if(e.code === "Enter") {
-            if(chatInput.style.display === "none") toggleUI(true);
+            if(chatInput.style.display === "none") toggleChat(true);
             else {
                 if(chatInput.value.trim()) handleCommand(chatInput.value);
                 chatInput.value = "";
-                toggleUI(false);
+                toggleChat(false);
             }
         }
         if(chatInput.style.display === "none") keys[e.code] = true;
@@ -176,24 +197,17 @@
 
     function update() {
         if(!gameStarted || chatInput.style.display === "block") return;
-        
-        // Horizontal Move
         if(keys["KeyA"]) player.x -= player.speed;
         if(keys["KeyD"]) player.x += player.speed;
-
-        // Ghost Mode vs Normal Physics
         if(ghostMode) {
             if(keys["KeyW"]) player.y -= player.speed;
             if(keys["KeyS"]) player.y += player.speed;
             player.vy = 0;
         } else {
-            player.vy += 0.5; // Gravity
-            player.y += player.vy;
-            // Floor Collision
+            player.vy += 0.6; player.y += player.vy;
             if(player.y > canvas.height - 140) {
-                player.y = canvas.height - 140;
-                player.vy = 0;
-                if(keys["KeyW"]) player.vy = -12; // Jump
+                player.y = canvas.height - 140; player.vy = 0;
+                if(keys["KeyW"]) player.vy = player.jumpPower;
             }
         }
     }
@@ -201,29 +215,24 @@
     function draw() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         if(!gameStarted) { requestAnimationFrame(draw); return; }
-        
         update();
 
         // Tanah
         ctx.fillStyle = "#8B4513";
         ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
 
-        // Player Shadow (Ghost Mode Effect)
+        // Player Shadow (Ghost Mode)
         ctx.globalAlpha = ghostMode ? 0.5 : 1.0;
         ctx.fillStyle = "#FFD700";
         ctx.fillRect(player.x, player.y, player.w, player.h);
         ctx.globalAlpha = 1.0;
-        
-        // Nama Player & RGB Role
+
+        // Label Nama & RGB
         if(playerRole === "DEV") {
             hue = (hue + 2) % 360;
             ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-        } else {
-            ctx.fillStyle = "white";
-        }
-        
-        ctx.font = "bold 16px Arial";
-        ctx.textAlign = "center";
+        } else { ctx.fillStyle = "white"; }
+        ctx.font = "bold 16px Arial"; ctx.textAlign = "center";
         ctx.fillText(`[${playerRole}] ${playerName}`, player.x + 15, player.y - 10);
 
         requestAnimationFrame(draw);
