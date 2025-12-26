@@ -1,53 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Final Fix</title>
+    <title>Sandbox - Breaworlds Style</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; }
-        canvas { display: block; }
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Arial', sans-serif; }
+        canvas { display: block; cursor: crosshair; }
 
-        /* TOP CHAT SYSTEM */
+        /* CHAT LOG DI ATAS */
         #topChatContainer { position: fixed; top: 0; left: 0; width: 100%; display: none; flex-direction: column; z-index: 4500; }
-        #globalBar { width: 100%; padding: 12px 0; background: rgba(255, 69, 0, 0.95); color: white; font-weight: bold; text-align: center; border-bottom: 3px solid #ff0000; }
-        #chatBox { width: 100%; max-height: 160px; background: rgba(0, 0, 0, 0.6); color: white; overflow-y: auto; padding: 10px 0; text-align: center; }
-        .chat-line { margin-bottom: 5px; font-size: 14px; text-shadow: 1px 1px 1px black; }
+        #globalBar { width: 100%; padding: 10px 0; background: rgba(255, 69, 0, 0.9); color: white; font-weight: bold; text-align: center; border-bottom: 2px solid #ff0000; }
+        #chatBox { width: 100%; max-height: 120px; background: rgba(0, 0, 0, 0.5); color: white; overflow-y: auto; padding: 5px 0; text-align: center; }
+        .chat-line { margin-bottom: 3px; font-size: 13px; }
 
-        /* INPUT CHAT */
-        #chatInput { position: fixed; top: 200px; left: 50%; transform: translateX(-50%); width: 450px; padding: 15px; background: rgba(0,0,0,0.9); color: white; border: 2px solid #00ff00; border-radius: 30px; display: none; z-index: 4600; outline: none; text-align: center; }
+        /* INPUT CHAT CENTER */
+        #chatInput { position: fixed; top: 180px; left: 50%; transform: translateX(-50%); width: 400px; padding: 12px; background: rgba(0,0,0,0.9); color: white; border: 2px solid #00ff00; border-radius: 20px; display: none; z-index: 4600; outline: none; text-align: center; }
 
         /* HOTBAR */
-        #hotbar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; background: rgba(0, 0, 0, 0.8); padding: 10px; border-radius: 15px; border: 3px solid #444; z-index: 2000; gap: 10px; }
-        .slot { width: 60px; height: 60px; background: #333; border: 2px solid #666; border-radius: 10px; display: flex; justify-content: center; align-items: center; color: white; font-size: 10px; position: relative; }
-        .slot.active { border-color: #00ff00; box-shadow: 0 0 15px #00ff00; }
+        #hotbar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; background: rgba(0, 0, 0, 0.7); padding: 8px; border-radius: 12px; border: 2px solid #444; z-index: 2000; gap: 8px; }
+        .slot { width: 50px; height: 50px; background: #333; border: 2px solid #666; border-radius: 8px; display: flex; justify-content: center; align-items: center; color: white; font-size: 9px; position: relative; }
+        .slot.active { border-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
 
-        /* OVERLAY */
+        /* LOGIN */
         #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; display: flex; justify-content: center; align-items: center; z-index: 5000; color: white; }
-        .login-box { text-align: center; background: #222; padding: 50px; border-radius: 25px; border: 2px solid #00ff00; }
+        .login-box { text-align: center; background: #222; padding: 40px; border-radius: 20px; border: 2px solid #00ff00; }
     </style>
 </head>
 <body oncontextmenu="return false;">
 
 <div id="loginScreen">
     <div class="login-box">
-        <h1 style="color: #00ff00;">SANDBOX WORLD</h1>
-        <input type="text" id="nameInput" placeholder="Nama..." maxlength="15" style="padding:10px; text-align:center;">
-        <br><button id="startBtn" style="margin-top:20px; padding:10px 40px; background:#00ff00; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">START</button>
+        <h2 style="color: #00ff00;">BREAWORLDS SANDBOX</h2>
+        <input type="text" id="nameInput" placeholder="Nama Player..." maxlength="12" style="padding:10px; text-align:center; border-radius:5px; border:none;">
+        <br><button id="startBtn" style="margin-top:15px; padding:10px 30px; background:#00ff00; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">LOGIN</button>
     </div>
 </div>
 
 <div id="topChatContainer">
-    <div id="globalBar">DUNIA ONLINE</div>
+    <div id="globalBar">WELCOME TO THE WORLD</div>
     <div id="chatBox"></div>
 </div>
 
-<input type="text" id="chatInput" placeholder="Ketik /? untuk daftar command...">
+<input type="text" id="chatInput" placeholder="Press Enter to talk...">
 
 <div id="hotbar">
-    <div class="slot active" data-key="1" id="slot-1">BLOCK</div>
-    <div class="slot" data-key="2" id="slot-2">DIRT</div>
-    <div class="slot" data-key="3" id="slot-3">STONE</div>
-    <div class="slot" data-key="4" id="slot-4">WOOD</div>
-    <div class="slot" data-key="5" id="slot-5">TNT</div>
+    <div class="slot active" data-key="1" id="slot-1">DIRT</div>
+    <div class="slot" data-key="2" id="slot-2">STONE</div>
+    <div class="slot" data-key="3" id="slot-3">WOOD</div>
+    <div class="slot" data-key="4" id="slot-4">TNT</div>
+    <div class="slot" data-key="5" id="slot-5">LAVA</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -66,13 +66,17 @@
     let hue = 0;
     let walkAnim = 0;
     let keys = {};
-    let player = { x: 300, y: 100, w: 30, h: 55, vy: 0, speed: 5 };
+    
+    // Player object
+    let player = { x: 400, y: 100, w: 30, h: 55, vy: 0, speed: 5 };
+    
+    // CHAT BUBBLE SYSTEM
+    let activeBubble = { text: "", timer: 0 };
 
     document.getElementById("startBtn").onclick = () => {
-        playerName = document.getElementById("nameInput").value || "Player";
+        playerName = document.getElementById("nameInput").value || "Guest";
         document.getElementById("loginScreen").style.display = "none";
         gameStarted = true;
-        addLog("System", "Ketik /? untuk melihat daftar command.", "#aaa");
     };
 
     function addLog(sender, msg, color = "white") {
@@ -83,58 +87,80 @@
         chatBox.appendChild(div);
         chatBox.scrollTop = chatBox.scrollHeight;
         topContainer.style.display = "flex";
-        
+
+        // Tampilkan Chat Bubble jika bukan command system
+        if(sender.toLowerCase() === playerName.toLowerCase()) {
+            activeBubble.text = msg;
+            activeBubble.timer = 240; // durasi bubble (frame)
+        }
+
         clearTimeout(window.chatT);
         if(chatInput.style.display === "none") {
-            window.chatT = setTimeout(() => { if(chatInput.style.display === "none") topContainer.style.display = "none"; }, 7000);
+            window.chatT = setTimeout(() => { if(chatInput.style.display === "none") topContainer.style.display = "none"; }, 5000);
         }
     }
 
     function handleCommand(input) {
-        if(isMuted) return addLog("System", "Kamu sedang di-mute!", "red");
-        
+        if(isMuted) return addLog("System", "You are muted!", "red");
         const args = input.split(" ");
         const cmd = args[0].toLowerCase();
         const isAdmin = (playerRole === "DEV" || playerRole === "MOD");
 
-        // LOGIN DEV (Sesuai gambar kamu)
         if(input === "/iamdeveloper block") {
-            playerRole = "DEV";
-            localStorage.setItem("playerRole", "DEV");
+            playerRole = "DEV"; localStorage.setItem("playerRole", "DEV");
             return addLog("System", "Akses Developer Aktif!", "cyan");
         }
 
         switch(cmd) {
-            case "/?":
-                addLog("Help", "/gm [msg], /p [nama] [msg], /nuke, /muteplayer, /iamdeveloper [kode]", "#00ff00");
-                break;
             case "/nuke":
-                if(!isAdmin) return addLog("System", "Command tidak dikenal.", "red");
-                addLog("GLOBAL", `${playerName} meluncurkan Nuke!`, "orange");
+                if(!isAdmin) return addLog("System", "Admin only!", "red");
+                addLog("GLOBAL", "NUCLEAR LAUNCHED!", "orange");
                 break;
             case "/muteplayer":
-                if(!isAdmin) return addLog("System", "Command tidak dikenal.", "red");
-                isMuted = true;
-                addLog("System", "Kamu telah di-mute.", "orange");
-                break;
-            case "/setrole":
-                if(playerRole !== "DEV") return addLog("System", "Command tidak dikenal.", "red");
-                if(!args[1]) return addLog("System", "Gunakan: /setrole [player/dev/mod]", "white");
-                playerRole = args[1].toUpperCase();
-                localStorage.setItem("playerRole", playerRole);
-                addLog("System", "Role diubah menjadi " + playerRole, "lime");
+                if(!isAdmin) return addLog("System", "Admin only!", "red");
+                isMuted = true; addLog("System", "You have been muted.", "red");
                 break;
             case "/gm":
-                if(!isAdmin) return addLog("System", "Command tidak dikenal.", "red");
+                if(!isAdmin) return addLog("System", "Admin only!", "red");
                 document.getElementById("globalBar").innerText = "GLOBAL: " + args.slice(1).join(" ");
-                addLog("GLOBAL", args.slice(1).join(" "), "yellow");
                 break;
             default:
-                addLog(playerName.toLowerCase(), input, (playerRole === "DEV" ? "cyan" : "white"));
+                addLog(playerName, input, (playerRole === "DEV" ? "cyan" : "white"));
         }
     }
 
-    // GAMBAR MANUSIA (DIPERBAIKI)
+    function drawBubble(x, y, text) {
+        if (!text || activeBubble.timer <= 0) return;
+        
+        ctx.font = "14px Arial";
+        let textWidth = ctx.measureText(text).width;
+        let padding = 10;
+        let bW = textWidth + padding * 2;
+        let bH = 30;
+        let bX = x + 15 - bW / 2;
+        let bY = y - 55;
+
+        // Draw Bubble Background
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.roundRect(bX, bY, bW, bH, 8);
+        ctx.fill();
+
+        // Draw Arrow
+        ctx.beginPath();
+        ctx.moveTo(x + 10, bY + bH);
+        ctx.lineTo(x + 15, bY + bH + 8);
+        ctx.lineTo(x + 20, bY + bH);
+        ctx.fill();
+
+        // Draw Text
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.fillText(text, x + 15, bY + 20);
+        
+        activeBubble.timer--;
+    }
+
     function drawHuman(x, y) {
         ctx.save();
         ctx.translate(x, y);
@@ -142,36 +168,27 @@
         let colorRole = (playerRole === "DEV") ? `hsl(${hue}, 100%, 50%)` : "#FFD700";
         if(playerRole === "DEV") hue = (hue + 2) % 360;
 
-        // KAKI (Animasi jalan)
-        let legW = Math.sin(walkAnim) * 10;
-        ctx.fillStyle = "#333"; // Celana
-        ctx.fillRect(5, 35, 8, 15 + legW);  // Kaki kiri
-        ctx.fillRect(17, 35, 8, 15 - legW); // Kaki kanan
+        // Kaki
+        let legW = Math.sin(walkAnim) * 8;
+        ctx.fillStyle = "#333";
+        ctx.fillRect(5, 35, 8, 15 + legW);  ctx.fillRect(17, 35, 8, 15 - legW);
 
-        // BADAN (Baju)
+        // Badan
         ctx.fillStyle = (playerRole === "DEV") ? colorRole : "#2222ff";
         ctx.fillRect(0, 15, 30, 25);
 
-        // TANGAN
+        // Kepala & Tangan
         ctx.fillStyle = "#FFCC99";
-        ctx.fillRect(-6, 18, 6, 15); // Tangan kiri
-        ctx.fillRect(30, 18, 6, 15); // Tangan kanan
-
-        // KEPALA
-        ctx.fillStyle = "#FFCC99";
-        ctx.fillRect(5, 0, 20, 18);
+        ctx.fillRect(-5, 18, 5, 12); ctx.fillRect(30, 18, 5, 12); // Tangan
+        ctx.fillRect(5, 0, 20, 18); // Muka
         
-        // MATA
         ctx.fillStyle = "black";
-        ctx.fillRect(9, 6, 3, 3);
-        ctx.fillRect(18, 6, 3, 3);
+        ctx.fillRect(9, 6, 3, 3); ctx.fillRect(18, 6, 3, 3); // Mata
 
         ctx.restore();
-
-        // NAMA
         ctx.fillStyle = (playerRole === "DEV") ? colorRole : "white";
-        ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
-        ctx.fillText(`[${playerRole}] ${playerName}`, x + 15, y - 12);
+        ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
+        ctx.fillText(`${playerName}`, x + 15, y - 8);
     }
 
     window.onkeydown = (e) => {
@@ -194,28 +211,31 @@
     };
     window.onkeyup = (e) => keys[e.code] = false;
 
+    function update() {
+        if(!gameStarted || chatInput.style.display === "block") return;
+        let isMoving = false;
+        if(keys["KeyA"]) { player.x -= player.speed; isMoving = true; }
+        if(keys["KeyD"]) { player.x += player.speed; isMoving = true; }
+        if(isMoving) walkAnim += 0.25; else walkAnim = 0;
+
+        player.vy += 0.6; player.y += player.vy;
+        if(player.y > canvas.height - 155) {
+            player.y = canvas.height - 155; player.vy = 0;
+            if(keys["KeyW"]) player.vy = -12;
+        }
+    }
+
     function draw() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         if(!gameStarted) { requestAnimationFrame(draw); return; }
+        update();
 
-        // Bergerak
-        let isMoving = false;
-        if(chatInput.style.display === "none") {
-            if(keys["KeyA"]) { player.x -= player.speed; isMoving = true; }
-            if(keys["KeyD"]) { player.x += player.speed; isMoving = true; }
-            if(isMoving) walkAnim += 0.2; else walkAnim = 0;
-
-            player.vy += 0.6; player.y += player.vy;
-            if(player.y > canvas.height - 155) {
-                player.y = canvas.height - 155; player.vy = 0;
-                if(keys["KeyW"]) player.vy = -12;
-            }
-        }
-
-        // Tanah
+        // Lantai
         ctx.fillStyle = "#8B4513"; ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
 
         drawHuman(player.x, player.y);
+        drawBubble(player.x, player.y, activeBubble.text);
+
         requestAnimationFrame(draw);
     }
 
