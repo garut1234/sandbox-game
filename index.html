@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Command Help System</title>
+    <title>Sandbox Pro - Rainbow Dev Role</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; }
         canvas { display: block; }
         
-        /* UI Darah */
         .hp-container {
             position: absolute; top: 15px; right: 20px;
             width: 200px; height: 25px; background: #333;
@@ -14,7 +13,6 @@
         }
         .hp-bar { width: 100%; height: 100%; background: #ff4444; transition: width 0.3s; }
 
-        /* Input Chat */
         #chatInput {
             position: absolute; bottom: 120px; left: 50%;
             transform: translateX(-50%);
@@ -25,7 +23,6 @@
             font-size: 16px; text-align: center;
         }
 
-        /* Inventory */
         .inventory-bar { 
             position: absolute; bottom: 25px; left: 50%; 
             transform: translateX(-50%); display: flex; 
@@ -71,8 +68,12 @@
     let world = {};
     let isChatting = false;
     let ghostMode = false;
-    let playerName = localStorage.getItem("playerName") || "Player";
     
+    // Variabel Nama & Role
+    let playerName = localStorage.getItem("playerName") || "Player";
+    let playerRole = localStorage.getItem("playerRole") || "PLAYER"; 
+    let rainbowHue = 0; // Untuk efek warna pelangi
+
     let currentMessage = "";
     let chatTimer = 0;
 
@@ -83,10 +84,9 @@
         world = {};
         let groundLevel = Math.floor(canvas.height / tileSize) - 1;
         let starterLevel = 10;
-        // Membuat 210 blok ke kanan
         for(let col = 0; col < 210; col++) {
-            world[`${col},${groundLevel}`] = "#5d4037"; // Bedrock
-            world[`${col},${starterLevel}`] = "#8B4513"; // Dirt
+            world[`${col},${groundLevel}`] = "#5d4037";
+            world[`${col},${starterLevel}`] = "#8B4513";
             world[`${col},${starterLevel + 1}`] = "#8B4513";
         }
     }
@@ -113,21 +113,27 @@
             const action = parts[0].toLowerCase();
 
             if (action === "/?" || action === "/help") {
-                alert("DAFTAR PERINTAH:\n/? atau /help : Liat menu ini\n/name [nama] : Ganti nama kamu\n/ghost : Tembus tembok & terbang\n/reset : Ulang dunia (210 blok)\n/kill : Bunuh diri");
-            } else if (action === "/name" && parts[1]) {
+                alert("COMMANDS:\n/setrole [dev/mod/player]\n/name [nama]\n/ghost | /kill | /reset");
+            } 
+            else if (action === "/setrole" && parts[1]) {
+                const newRole = parts[1].toUpperCase();
+                if (["DEV", "MOD", "PLAYER"].includes(newRole)) {
+                    playerRole = newRole;
+                    localStorage.setItem("playerRole", playerRole);
+                }
+            }
+            else if (action === "/name" && parts[1]) {
                 playerName = parts.slice(1).join(" ");
                 localStorage.setItem("playerName", playerName);
-            } else if (action === "/ghost") {
+            } 
+            else if (action === "/ghost") {
                 ghostMode = !ghostMode; player.vy = 0;
-                currentMessage = "Ghost Mode: " + (ghostMode ? "ON" : "OFF");
-                chatTimer = 120;
-            } else if (action === "/reset") {
-                if(confirm("Reset dunia menjadi 210 blok tanah?")) {
-                    generateFullWorld(); saveData();
-                }
-            } else if (action === "/kill") {
-                player.hp = 0;
-            }
+            } 
+            else if (action === "/reset") {
+                if (playerRole === "DEV") { generateFullWorld(); saveData(); }
+                else { alert("Khusus Developer!"); }
+            } 
+            else if (action === "/kill") { player.hp = 0; }
         } else {
             currentMessage = input;
             chatTimer = 300;
@@ -137,14 +143,10 @@
     window.addEventListener("keydown", (e) => {
         if (e.code === "Enter") {
             if (!isChatting) {
-                isChatting = true;
-                chatInput.style.display = "block";
-                chatInput.focus();
+                isChatting = true; chatInput.style.display = "block"; chatInput.focus();
             } else {
                 if (chatInput.value.trim() !== "") processCommandOrChat(chatInput.value);
-                chatInput.value = "";
-                chatInput.style.display = "none";
-                isChatting = false;
+                chatInput.value = ""; chatInput.style.display = "none"; isChatting = false;
             }
             return;
         }
@@ -189,14 +191,14 @@
             let pCol = Math.floor((player.x + player.w/2) / tileSize);
             if (world[`${pCol},${pRow}`]) {
                 player.y = pRow * tileSize - player.h;
-                player.vy = 0;
-                player.grounded = true;
-            } else {
-                player.grounded = false;
-            }
+                player.vy = 0; player.grounded = true;
+            } else { player.grounded = false; }
             if (keys["KeyW"] && player.grounded) { player.vy = player.jumpPower; player.grounded = false; }
         }
         
+        // Animasi warna pelangi
+        rainbowHue = (rainbowHue + 2) % 360;
+
         document.getElementById("hpBar").style.width = player.hp + "%";
         if (chatTimer > 0) chatTimer--;
         if (player.hp <= 0) { player.hp = 100; player.x = 100; player.y = 300; player.vy = 0; }
@@ -204,37 +206,52 @@
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
         for (let key in world) {
             const [col, row] = key.split(",").map(Number);
             ctx.fillStyle = world[key];
             ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
         }
 
-        ctx.save();
-        ctx.globalAlpha = ghostMode ? 0.5 : 1.0;
         ctx.fillStyle = "#FFD700";
         ctx.fillRect(player.x, player.y, player.w, player.h);
-        ctx.restore();
 
-        // Nametag
-        ctx.fillStyle = "white";
+        // --- DRAW NAMETAG ---
+        let rolePrefix = "";
+        let roleColor = "white";
+
+        if (playerRole === "DEV") {
+            rolePrefix = "[DEV] ";
+            roleColor = `hsl(${rainbowHue}, 100%, 50%)`; // Efek Pelangi
+        } else if (playerRole === "MOD") {
+            rolePrefix = "[MOD] ";
+            roleColor = "#A020F0"; // Ungu
+        }
+
         ctx.font = "bold 14px Arial";
         ctx.textAlign = "center";
-        ctx.fillText(playerName, player.x + player.w/2, player.y - 10);
+        
+        let prefixWidth = ctx.measureText(rolePrefix).width;
+        let nameWidth = ctx.measureText(playerName).width;
+        let totalCenter = player.x + player.w / 2;
+        
+        // Render Prefix
+        ctx.fillStyle = roleColor;
+        ctx.fillText(rolePrefix, totalCenter - (nameWidth / 2), player.y - 10);
+        
+        // Render Nama
+        ctx.fillStyle = "white";
+        ctx.fillText(playerName, totalCenter + (prefixWidth / 2), player.y - 10);
 
         // Chat Bubble
         if (chatTimer > 0) {
             ctx.font = "16px Arial";
             const textWidth = ctx.measureText(currentMessage).width;
-            const bx = (player.x + player.w/2) - (textWidth + 20)/2;
+            const bx = totalCenter - (textWidth + 20)/2;
             const by = player.y - 55;
             ctx.fillStyle = "white";
-            ctx.beginPath();
-            ctx.roundRect(bx, by, textWidth + 20, 30, 10);
-            ctx.fill();
+            ctx.beginPath(); ctx.roundRect(bx, by, textWidth + 20, 30, 10); ctx.fill();
             ctx.fillStyle = "black";
-            ctx.fillText(currentMessage, player.x + player.w/2, by + 20);
+            ctx.fillText(currentMessage, totalCenter, by + 20);
         }
 
         update();
