@@ -1,40 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Rainbow Full Power</title>
+    <title>Sandbox Pro - All Commands Fixed</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; }
         canvas { display: block; }
-        
-        .hp-container {
-            position: absolute; top: 15px; right: 20px;
-            width: 200px; height: 25px; background: #333;
-            border: 3px solid #000; border-radius: 15px; overflow: hidden; z-index: 1000;
-        }
+        .hp-container { position: absolute; top: 15px; right: 20px; width: 200px; height: 25px; background: #333; border: 3px solid #000; border-radius: 15px; overflow: hidden; z-index: 1000; }
         .hp-bar { width: 100%; height: 100%; background: #ff4444; transition: width 0.3s; }
-
-        #chatInput {
-            position: absolute; bottom: 120px; left: 50%;
-            transform: translateX(-50%);
-            width: 400px; padding: 12px;
-            background: rgba(0,0,0,0.9); color: #fff;
-            border: 2px solid #00ff00; border-radius: 20px;
-            display: none; z-index: 3000; outline: none;
-            font-size: 16px; text-align: center;
-        }
-
-        .inventory-bar { 
-            position: absolute; bottom: 25px; left: 50%; 
-            transform: translateX(-50%); display: flex; 
-            background: #222; padding: 10px; border: 4px solid #000; 
-            border-radius: 15px; z-index: 2000;
-        }
-        .slot { 
-            width: 55px; height: 55px; margin: 0 5px; 
-            border: 3px solid #444; display: flex; 
-            justify-content: center; align-items: center; 
-            color: white; font-weight: bold; border-radius: 10px;
-        }
+        #chatInput { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); width: 400px; padding: 12px; background: rgba(0,0,0,0.9); color: #fff; border: 2px solid #00ff00; border-radius: 20px; display: none; z-index: 3000; outline: none; font-size: 16px; text-align: center; }
+        .inventory-bar { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); display: flex; background: #222; padding: 10px; border: 4px solid #000; border-radius: 15px; z-index: 2000; }
+        .slot { width: 55px; height: 55px; margin: 0 5px; border: 3px solid #444; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; border-radius: 10px; }
         .active { border-color: #00ff00; box-shadow: 0 0 15px #00ff00; transform: scale(1.1); }
     </style>
 </head>
@@ -57,10 +32,7 @@
     const ctx = canvas.getContext("2d");
     const chatInput = document.getElementById("chatInput");
     
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    }
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener('resize', resize);
     resize();
 
@@ -68,32 +40,22 @@
     let world = {};
     let isChatting = false;
     let ghostMode = false;
-    
     let playerName = localStorage.getItem("playerName") || "Player";
     let playerRole = localStorage.getItem("playerRole") || "PLAYER"; 
     let rainbowHue = 0;
-
     let currentMessage = "";
     let chatTimer = 0;
-
     const blocks = { "1": "#8B4513", "2": "#808080", "3": "#228B22", "4": "#FF4500" };
     let selectedBlock = "#8B4513"; 
 
-    // --- FUNGSI GENERATE DUNIA FULL KE BAWAH ---
     function generateFullWorld() {
         world = {};
         let totalCols = 210;
         let totalRows = Math.ceil(canvas.height / tileSize);
         let starterLevel = 10;
-
         for(let col = 0; col < totalCols; col++) {
-            // Isi dari starterLevel sampai paling bawah layar
             for(let row = starterLevel; row < totalRows; row++) {
-                if (row === totalRows - 1) {
-                    world[`${col},${row}`] = "#5d4037"; // Bedrock di paling bawah
-                } else {
-                    world[`${col},${row}`] = "#8B4513"; // Dirt mengisi semua celah
-                }
+                world[`${col},${row}`] = (row === totalRows - 1) ? "#5d4037" : "#8B4513";
             }
         }
     }
@@ -103,29 +65,31 @@
         if (saved && saved !== "{}") world = JSON.parse(saved);
         else { generateFullWorld(); saveData(); }
     }
-
     function saveData() { localStorage.setItem("mySandboxWorld", JSON.stringify(world)); }
     loadWorld();
 
-    let player = {
-        x: 100, y: 300, w: 30, h: 40,
-        vx: 0, vy: 0, speed: 5,
-        jumpPower: -12, gravity: 0.6, grounded: false,
-        hp: 100
-    };
+    let player = { x: 100, y: 300, w: 30, h: 40, vx: 0, vy: 0, speed: 5, jumpPower: -12, gravity: 0.6, grounded: false, hp: 100 };
 
     function processCommandOrChat(input) {
         if (input.startsWith("/")) {
             const parts = input.split(" ");
             const action = parts[0].toLowerCase();
-            if (action === "/setrole" && parts[1]) {
+            
+            if (action === "/?" || action === "/help") {
+                alert("LIST COMMANDS:\n/? : Bantuan\n/name [nama] : Ganti Nama\n/setrole [dev/mod/player]\n/ghost : Mode Terbang\n/reset : Reset Dunia\n/kill : Bunuh Diri");
+            } else if (action === "/setrole" && parts[1]) {
                 playerRole = parts[1].toUpperCase();
                 localStorage.setItem("playerRole", playerRole);
-            } else if (action === "/reset") {
-                generateFullWorld(); saveData();
             } else if (action === "/name" && parts[1]) {
                 playerName = parts.slice(1).join(" ");
                 localStorage.setItem("playerName", playerName);
+            } else if (action === "/reset") {
+                if (playerRole === "DEV") { generateFullWorld(); saveData(); } 
+                else { alert("Hanya Developer yang bisa reset!"); }
+            } else if (action === "/ghost") {
+                ghostMode = !ghostMode; player.vy = 0;
+            } else if (action === "/kill") {
+                player.hp = 0;
             }
         } else {
             currentMessage = input;
@@ -151,9 +115,8 @@
     canvas.addEventListener("mousedown", (e) => {
         if (isChatting) return;
         const pos = { col: Math.floor(e.clientX / tileSize), row: Math.floor(e.clientY / tileSize) };
-        const key = `${pos.col},${pos.row}`;
-        if (e.button === 0) world[key] = selectedBlock; 
-        else if (e.button === 2) delete world[key];
+        if (e.button === 0) world[`${pos.col},${pos.row}`] = selectedBlock; 
+        else if (e.button === 2) delete world[`${pos.col},${pos.row}`];
         saveData();
     });
 
@@ -166,18 +129,25 @@
         player.vx = 0;
         if (keys["KeyA"]) player.vx = -player.speed;
         if (keys["KeyD"]) player.vx = player.speed;
-        player.vy += player.gravity;
+        
+        if (ghostMode) {
+            player.vy = 0;
+            if (keys["KeyW"]) player.y -= player.speed;
+            if (keys["KeyS"]) player.y += player.speed;
+        } else {
+            player.vy += player.gravity;
+            player.y += player.vy;
+            let pRow = Math.floor((player.y + player.h) / tileSize);
+            let pCol = Math.floor((player.x + player.w/2) / tileSize);
+            if (world[`${pCol},${pRow}`]) { player.y = pRow * tileSize - player.h; player.vy = 0; player.grounded = true; } 
+            else { player.grounded = false; }
+            if (keys["KeyW"] && player.grounded) { player.vy = player.jumpPower; player.grounded = false; }
+        }
         player.x += player.vx;
-        player.y += player.vy;
-        let pRow = Math.floor((player.y + player.h) / tileSize);
-        let pCol = Math.floor((player.x + player.w/2) / tileSize);
-        if (world[`${pCol},${pRow}`]) {
-            player.y = pRow * tileSize - player.h;
-            player.vy = 0; player.grounded = true;
-        } else { player.grounded = false; }
-        if (keys["KeyW"] && player.grounded) { player.vy = player.jumpPower; player.grounded = false; }
-        rainbowHue = (rainbowHue + 3) % 360; // Kecepatan pelangi
+        rainbowHue = (rainbowHue + 3) % 360;
         if (chatTimer > 0) chatTimer--;
+        if (player.hp <= 0) { player.hp = 100; player.x = 100; player.y = 300; player.vy = 0; }
+        document.getElementById("hpBar").style.width = player.hp + "%";
     }
 
     function draw() {
@@ -191,25 +161,20 @@
         ctx.fillStyle = "#FFD700";
         ctx.fillRect(player.x, player.y, player.w, player.h);
 
-        // --- NAMETAG FIX (RAINBOW FULL) ---
+        // --- NAMETAG FIX ---
         let rolePrefix = (playerRole === "DEV") ? "[DEV] " : (playerRole === "MOD") ? "[MOD] " : "";
         let fullText = rolePrefix + playerName;
-        
         let roleColor = "white";
         if (playerRole === "DEV") roleColor = `hsl(${rainbowHue}, 100%, 60%)`;
         else if (playerRole === "MOD") roleColor = "#A020F0";
 
         ctx.font = "bold 15px Arial";
         ctx.textAlign = "center";
-        
-        // Shadow biar terbaca jelas
-        ctx.shadowColor = "black";
-        ctx.shadowBlur = 4;
+        ctx.shadowColor = "black"; ctx.shadowBlur = 4;
         ctx.fillStyle = roleColor;
         ctx.fillText(fullText, player.x + player.w / 2, player.y - 12);
         ctx.shadowBlur = 0;
 
-        // Chat Bubble
         if (chatTimer > 0) {
             ctx.font = "16px Arial";
             const textWidth = ctx.measureText(currentMessage).width;
@@ -220,7 +185,6 @@
             ctx.fillStyle = "black";
             ctx.fillText(currentMessage, player.x + player.w/2, by + 20);
         }
-
         update();
         requestAnimationFrame(draw);
     }
