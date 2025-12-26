@@ -1,10 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sandbox Pro - Permission Update</title>
+    <title>Sandbox Pro - Admin Security</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; }
         canvas { display: block; }
+
+        /* Efek Getar Layar */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px); }
+            20% { transform: translate(-3px, 0px); }
+            40% { transform: translate(3px, 2px); }
+            60% { transform: translate(-3px, 1px); }
+            80% { transform: translate(3px, -1px); }
+            100% { transform: translate(1px, 1px); }
+        }
 
         /* LOBY SCREEN */
         #loginScreen {
@@ -20,8 +30,9 @@
         }
         input#nameInput {
             padding: 15px; font-size: 18px; border-radius: 12px; border: none;
-            width: 280px; margin-bottom: 20px; outline: none; text-align: center;
+            width: 280px; margin-bottom: 10px; outline: none; text-align: center;
         }
+        #errorMsg { color: #ff4444; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
         button#startBtn {
             padding: 15px 50px; font-size: 18px; cursor: pointer;
             background: #00ff00; border: none; border-radius: 12px; font-weight: bold;
@@ -30,30 +41,12 @@
         /* GAME UI */
         .hp-container { position: absolute; top: 15px; right: 20px; width: 200px; height: 25px; background: #333; border: 3px solid #000; border-radius: 15px; overflow: hidden; display: none; }
         .hp-bar { width: 100%; height: 100%; background: #ff4444; }
+        #chatInput { position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); width: 450px; padding: 12px; background: rgba(0,0,0,0.9); color: #fff; border: 2px solid #00ff00; border-radius: 20px; display: none; z-index: 3000; text-align: center; outline: none; }
         
-        #chatInput { 
-            position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); 
-            width: 400px; padding: 12px; background: rgba(0,0,0,0.9); color: #fff; 
-            border: 2px solid #00ff00; border-radius: 20px; display: none; z-index: 3000; outline: none; text-align: center;
-        }
-
-        /* INVENTORY 30 SLOT */
-        .inventory-wrapper {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            display: none; background: rgba(0,0,0,0.8); padding: 10px; 
-            border: 4px solid #444; border-radius: 15px; z-index: 2000;
-            max-width: 95vw; overflow-x: auto;
-        }
-        .inventory-grid {
-            display: grid; grid-template-columns: repeat(15, 50px); grid-template-rows: repeat(2, 50px); gap: 5px;
-        }
-        .slot { 
-            width: 50px; height: 50px; background: #333; border: 2px solid #555; 
-            display: flex; justify-content: center; align-items: center; 
-            border-radius: 8px; cursor: pointer; position: relative;
-        }
-        .slot.active { border-color: #00ff00; background: #444; box-shadow: 0 0 10px #00ff00; }
-        .item-icon { width: 30px; height: 30px; pointer-events: none; }
+        .inventory-wrapper { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: none; background: rgba(0,0,0,0.8); padding: 10px; border: 4px solid #444; border-radius: 15px; z-index: 2000; }
+        .inventory-grid { display: grid; grid-template-columns: repeat(15, 50px); grid-template-rows: repeat(2, 50px); gap: 5px; }
+        .slot { width: 50px; height: 50px; background: #333; border: 2px solid #555; display: flex; justify-content: center; align-items: center; border-radius: 8px; color: white; }
+        .active { border-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
     </style>
 </head>
 <body>
@@ -61,9 +54,9 @@
 <div id="loginScreen">
     <div class="login-box">
         <h1>SANDBOX ADMIN</h1>
-        <p>Gunakan /setrole dev (untuk admin baru)</p>
+        <p id="worldStatus">Status: Online ✅</p>
         <input type="text" id="nameInput" placeholder="Nama..." maxlength="15">
-        <br>
+        <div id="errorMsg"></div>
         <button id="startBtn">MASUK GAME</button>
     </div>
 </div>
@@ -85,50 +78,41 @@
     let gameStarted = false;
     let playerName = "";
     let playerRole = localStorage.getItem("playerRole") || "PLAYER";
-    let rainbowHue = 0;
-    let selectedSlotIndex = 0;
+    let isMuted = false;
+    let worldIsNuked = localStorage.getItem("worldNuked") === "true";
 
-    const items = [
-        { id: 1, name: "Dirt", color: "#8B4513", type: "block" },
-        { id: 2, name: "Stone", color: "#808080", type: "block" },
-        { id: 3, name: "Grass", color: "#228B22", type: "block" },
-        { id: 4, name: "Lava", color: "#FF4500", type: "block" },
-        { id: 5, name: "Pouch", color: "#D2B48C", type: "tool" },
-        { id: 6, name: "Wrench", color: "#C0C0C0", type: "tool" },
-    ];
-    for(let i = 7; i <= 30; i++) items.push({ id: i, name: "Empty", color: "transparent", type: "none" });
-
-    const invGrid = document.getElementById("invGrid");
-    items.forEach((item, index) => {
-        const slot = document.createElement("div");
-        slot.className = "slot" + (index === 0 ? " active" : "");
-        slot.id = "slot-" + index;
-        if (item.type === "block") slot.innerHTML = `<div style="width:25px; height:25px; background:${item.color}"></div>`;
-        else if (item.name === "Pouch") slot.innerHTML = `<svg viewBox="0 0 24 24" class="item-icon"><path fill="${item.color}" d="M12,2A3,3 0 0,0 9,5C9,5.28 9.04,5.55 9.12,5.81L5.64,9.29C5.23,9.7 5,10.26 5,10.88V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V10.88C19,10.26 18.77,9.7 18.36,9.29L14.88,5.81C14.96,5.55 15,5.28 15,5A3,3 0 0,0 12,2Z"/></svg>`;
-        else if (item.name === "Wrench") slot.innerHTML = `<svg viewBox="0 0 24 24" class="item-icon"><path fill="${item.color}" d="M13.46,12L19,17.54V19H17.54L12,13.46L6.46,19H5V17.54L10.54,12L5,6.46V5H6.46L12,10.54L17.54,5H19V6.46L13.46,12Z"/></svg>`;
-        slot.onclick = () => selectSlot(index);
-        invGrid.appendChild(slot);
-    });
-
-    function selectSlot(index) {
-        document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
-        document.getElementById('slot-' + index).classList.add('active');
-        selectedSlotIndex = index;
+    // Update status lobi
+    if(worldIsNuked) {
+        document.getElementById("worldStatus").innerText = "Status: NUKED / LOCKED ⚠️";
+        document.getElementById("worldStatus").style.color = "#ff4444";
     }
 
     document.getElementById("startBtn").onclick = function() {
-        if(document.getElementById("nameInput").value.trim() !== "") {
-            playerName = document.getElementById("nameInput").value;
-            document.getElementById("loginScreen").style.display = "none";
-            document.getElementById("hpBox").style.display = "block";
-            document.getElementById("invWrapper").style.display = "block";
-            gameStarted = true;
-            generateFullWorld();
+        const name = document.getElementById("nameInput").value.trim();
+        const isAdmin = (playerRole === "DEV" || playerRole === "MOD");
+
+        if(name === "") {
+            document.getElementById("errorMsg").innerText = "Nama wajib diisi!";
+            return;
         }
+
+        // Proteksi Nuked World
+        if(worldIsNuked && !isAdmin) {
+            document.getElementById("errorMsg").innerText = "WORLD DI-BAN! Hanya DEV/MOD yang bisa masuk.";
+            return;
+        }
+
+        playerName = name;
+        document.getElementById("loginScreen").style.display = "none";
+        document.getElementById("hpBox").style.display = "block";
+        document.getElementById("invWrapper").style.display = "block";
+        gameStarted = true;
+        generateFullWorld();
     };
 
     function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; if(gameStarted) generateFullWorld(); }
-    window.addEventListener('resize', resize); resize();
+    window.addEventListener('resize', resize);
+    resize();
 
     const tileSize = 40;
     let world = {};
@@ -136,6 +120,29 @@
     let ghostMode = false;
     let currentMessage = "";
     let chatTimer = 0;
+    let rainbowHue = 0;
+    let selectedSlotIndex = 0;
+
+    const items = [
+        {id:1, name:"Dirt", color:"#8B4513", type:"block"},
+        {id:2, name:"Stone", color:"#808080", type:"block"},
+        {id:3, name:"Grass", color:"#228B22", type:"block"}
+    ];
+    for(let i = 4; i <= 30; i++) items.push({id:i, name:"Empty", color:"transparent", type:"none"});
+
+    const invGrid = document.getElementById("invGrid");
+    items.forEach((item, index) => {
+        const slot = document.createElement("div");
+        slot.className = "slot" + (index === 0 ? " active" : "");
+        slot.id = "slot-" + index;
+        if(item.type === "block") slot.innerHTML = `<div style="width:20px;height:20px;background:${item.color}"></div>`;
+        slot.onclick = () => {
+            document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
+            slot.classList.add('active');
+            selectedSlotIndex = index;
+        };
+        invGrid.appendChild(slot);
+    });
 
     function generateFullWorld() {
         world = {};
@@ -153,32 +160,43 @@
         if (input.startsWith("/")) {
             const parts = input.split(" ");
             const action = parts[0].toLowerCase();
-            
-            // --- LOGIKA PERMISSION ---
-            if (action === "/setrole" && parts[1]) {
+            const isAdmin = (playerRole === "DEV" || playerRole === "MOD");
+
+            // --- KHUSUS DEV & MOD ---
+            if (action === "/nuked") {
+                if (isAdmin) {
+                    worldIsNuked = !worldIsNuked;
+                    localStorage.setItem("worldNuked", worldIsNuked);
+                    currentMessage = worldIsNuked ? "☢️ WORLD BANNED & LOCKED! ☢️" : "✅ WORLD UNBANNED"; 
+                    chatTimer = 200;
+                    canvas.style.animation = "shake 0.5s";
+                    setTimeout(() => canvas.style.animation = "", 500);
+                } else alert("Hanya DEV/MOD yang bisa BAN world!");
+            }
+            else if (action === "/muteplayer") {
+                if (isAdmin) {
+                    isMuted = !isMuted;
+                    currentMessage = isMuted ? "SYSTEM: Muted" : "SYSTEM: Unmuted";
+                    chatTimer = 150;
+                } else alert("Hanya DEV/MOD yang bisa Mute!");
+            }
+            else if (action === "/ghost") {
+                if (isAdmin) { ghostMode = !ghostMode; player.vy = 0; }
+                else alert("Akses Khusus Admin!");
+            }
+            // --- KHUSUS DEV SAJA ---
+            else if (action === "/setrole" && parts[1]) {
                 if (playerRole === "DEV") {
                     playerRole = parts[1].toUpperCase();
                     localStorage.setItem("playerRole", playerRole);
-                } else { alert("Hanya Developer yang bisa ganti role!"); }
-            } 
-            else if (action === "/ghost") {
-                if (playerRole === "DEV" || playerRole === "MOD") {
-                    ghostMode = !ghostMode; player.vy = 0;
-                    currentMessage = ghostMode ? "Ghost Mode ON" : "Ghost Mode OFF"; chatTimer = 100;
-                } else { alert("Akses Ditolak: Ghost hanya untuk Dev & Mod!"); }
+                    location.reload();
+                } else alert("Hanya Developer!");
             }
-            else if (action === "/name" && parts[1]) {
-                if (playerRole === "DEV" || playerRole === "MOD") { playerName = parts.slice(1).join(" "); } 
-                else { alert("Player biasa tidak bisa ganti nama!"); }
-            }
-            else if (action === "/reset") {
-                if (playerRole === "DEV") { generateFullWorld(); } 
-                else { alert("Reset hanya untuk Developer!"); }
-            }
-            else if (action === "/kill") { player.hp = 0; }
-            else if (action === "/?") { alert("/setrole (Dev)\n/ghost (Dev/Mod)\n/name (Dev/Mod)\n/reset (Dev)\n/kill"); }
+            else if (action === "/kill") player.hp = 0;
+            else if (action === "/?") alert("/nuked (Ban World)\n/muteplayer (Mute)\n/ghost (Admin)\n/setrole [dev/mod/player]");
         } else {
-            currentMessage = input; chatTimer = 300;
+            if (!isMuted) { currentMessage = input; chatTimer = 300; }
+            else alert("Kamu sedang di-mute karena toxic!");
         }
     }
 
@@ -189,37 +207,18 @@
             else { if (chatInput.value.trim() !== "") processCommandOrChat(chatInput.value); chatInput.value = ""; chatInput.style.display = "none"; isChatting = false; }
             return;
         }
-        if (isChatting) return;
-        keys[e.code] = true;
-        if (e.key >= 1 && e.key <= 9) selectSlot(parseInt(e.key) - 1);
+        if (!isChatting) keys[e.code] = true;
     });
-
-    canvas.addEventListener("mousedown", (e) => {
-        if (!gameStarted || isChatting) return;
-        const pos = { col: Math.floor(e.clientX / tileSize), row: Math.floor(e.clientY / tileSize) };
-        const item = items[selectedSlotIndex];
-        if (e.button === 0 && item.type === "block") world[`${pos.col},${pos.row}`] = item.color;
-        else if (e.button === 2) delete world[`${pos.col},${pos.row}`];
-        else if (e.button === 0 && item.type === "tool") { currentMessage = "Menggunakan " + item.name; chatTimer = 60; }
-    });
-
-    canvas.oncontextmenu = (e) => e.preventDefault();
-    let keys = {};
     window.onkeyup = (e) => keys[e.code] = false;
+    let keys = {};
 
     function update() {
         if (!gameStarted || isChatting) return;
-        player.vx = 0;
-        if (keys["KeyA"]) player.vx = -player.speed;
-        if (keys["KeyD"]) player.vx = player.speed;
-        
+        player.vx = (keys["KeyA"] ? -player.speed : (keys["KeyD"] ? player.speed : 0));
         if (ghostMode) {
-            player.vy = 0;
-            if (keys["KeyW"]) player.y -= player.speed;
-            if (keys["KeyS"]) player.y += player.speed;
+            player.vy = 0; if(keys["KeyW"]) player.y -= player.speed; if(keys["KeyS"]) player.y += player.speed;
         } else {
-            player.vy += player.gravity;
-            player.y += player.vy;
+            player.vy += player.gravity; player.y += player.vy;
             let pRow = Math.floor((player.y + player.h) / tileSize);
             let pCol = Math.floor((player.x + player.w/2) / tileSize);
             if (world[`${pCol},${pRow}`]) { player.y = pRow * tileSize - player.h; player.vy = 0; player.grounded = true; } 
@@ -229,7 +228,7 @@
         player.x += player.vx;
         rainbowHue = (rainbowHue + 3) % 360;
         if (chatTimer > 0) chatTimer--;
-        if (player.hp <= 0) { player.hp = 100; player.x = 100; player.y = 200; player.vy = 0; }
+        if (player.hp <= 0) { player.hp = 100; player.x = 100; player.y = 200; }
         document.getElementById("hpBar").style.width = player.hp + "%";
     }
 
@@ -238,16 +237,12 @@
         if (!gameStarted) { requestAnimationFrame(draw); return; }
         for (let key in world) {
             const [col, row] = key.split(",").map(Number);
-            ctx.fillStyle = world[key];
-            ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+            ctx.fillStyle = world[key]; ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
         }
-        ctx.fillStyle = "#FFD700";
-        ctx.fillRect(player.x, player.y, player.w, player.h);
-
+        ctx.fillStyle = "#FFD700"; ctx.fillRect(player.x, player.y, player.w, player.h);
         let rColor = (playerRole === "DEV") ? `hsl(${rainbowHue}, 100%, 60%)` : (playerRole === "MOD" ? "#A020F0" : "white");
-        ctx.font = "bold 15px Arial"; ctx.textAlign = "center";
-        ctx.fillStyle = rColor; ctx.fillText((playerRole !== "PLAYER" ? "["+playerRole+"] " : "") + playerName, player.x + player.w/2, player.y - 12);
-
+        ctx.font = "bold 15px Arial"; ctx.textAlign = "center"; ctx.fillStyle = rColor;
+        ctx.fillText((playerRole !== "PLAYER" ? "["+playerRole+"] " : "") + (isMuted ? "[MUTED] " : "") + playerName, player.x + player.w/2, player.y - 12);
         if (chatTimer > 0) {
             ctx.font = "16px Arial"; const tw = ctx.measureText(currentMessage).width;
             ctx.fillStyle = "white"; ctx.beginPath(); ctx.roundRect(player.x + player.w/2 - (tw+20)/2, player.y - 65, tw + 20, 30, 10); ctx.fill();
